@@ -154,8 +154,8 @@ end
   2  (00000010) - crouching
   0  (00000000) - standing
 ]]--
-function get_player_state()
-    return mem:read_18(0xFF83C1 + (p_offset * player_num))
+function get_player_state(player_num)
+    return mem:read_i8(0xFF83C1 + (p_offset * player_num))
 end
 
 -- Not working yet
@@ -270,6 +270,7 @@ end
 
 
 function main()    
+    print(get_player_state(0))
     --p1_stats['x'] = get_p1_screen_x
     --p1_stats['y'] = get_p1_screen_y
 
