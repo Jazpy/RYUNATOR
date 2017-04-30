@@ -161,24 +161,35 @@ function get_player_state(player_num)
     return mem:read_i8(0xFF83C1 + (p_offset * player_num))
 end
 
--- Not working yet
-function get_animation_data(player_num)
-    return mem:read_i32(0xFF83D8 + (p_offset * player_num))
+function get_timer()
+    return tonumber(string.format("%x", mem:read_u8(0xFF8ABE)))
+end
+
+-- 0 = no block, 1 = standing block, 2 = crouching block
+function get_blocking(player_num)
+    return get_animation_byte(player_num, 17, 1)
+end
+
+-- 0 = standing, 1 = crouching
+function get_crouching(player_num)
+    return get_animation_byte(player_num, 18, 1)
+end
+
+-- Player, what byte to start reading from in the 24 byte sequence, how many bytes to read (1, 2, 4)
+function get_animation_byte(player_num, byte, to_read)
+    anim_pointer = mem:read_u32(0xFF83D8 + (p_offset * player_num))
+    
+    if to_read == 1 then
+      return mem:read_u8(anim_pointer + byte)
+    elseif to_read == 2 then
+      return mem:read_u16(anim_pointer + byte)
+    else
+      return mem:read_u32(anim_pointer + byte)
+    end
 end
 --------------------
 -- END MEM ACCESS --
 --------------------
-
-----------------------
--- HELPER FUNCTIONS --
-----------------------
-function get_nth_byte(num,mask_size,position)
-    bit_mask = 0x1 * mask_size
-    return bit32.band(bit32.rshift(num, position), bit_mask)
-end
---------------------------
--- END HELPER FUNCTIONS --
---------------------------
 
 
 ----------------
@@ -272,8 +283,9 @@ end
 --------------------
 
 
-function main()    
-    print(get_player_state(0))
+function main()
+    print(get_blocking(0))
+    
     --p1_stats['x'] = get_p1_screen_x
     --p1_stats['y'] = get_p1_screen_y
 
