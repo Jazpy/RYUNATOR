@@ -1,9 +1,10 @@
 # RYUNATOR
-SFII Neural Network
+SFII Neural Network using Neuroevolution
 
 - MAME version: MAME 0.185 64-bit Windows
 - Street Fighter II' Turbo (romset sf2hfj)
 
-Run with: (assuming mame64.exe and RYUNATOR.lua are in the same folder)
-    
-    .\mame64.exe -autoboot_script RYUNATOR.lua sf2hfj
+## How To run ? 
+* Clone to MAMEs directory, preferably in a subdictory such as src
+* Run with:
+    - *.\mame64.exe -autoboot_script src/RYUNATOR/RYUNATOR.lua sf2hfj -w*
