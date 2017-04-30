@@ -3,7 +3,6 @@ local mem = manager:machine().devices[":maincpu"].spaces["program"]
 -- Player stats dict
 local p1_stats, p2_stats = {}, {}
 -- Memory address offset to differentiate p1 and p2
-
 local p_offset = 0x0300
 -- Combines ports IN1 and IN2
 local controller
@@ -112,7 +111,7 @@ end
 ----------------
 -- MEM ACCESS --
 ----------------
--- The parameters represent which players info you want, indexed from 0.
+-- The parameter represents which player's info you want, indexed from 0.
 function get_pos_x(player_num)
     return mem:read_i16(0xFF83C4 + (p_offset * player_num))
 end
@@ -249,12 +248,7 @@ end
 
 function main()
     p1_animation_data = get_animation_data(0)
-    for i=1,23,1 do
-        print(string.format("%X", i).. " - ".. get_nth_byte(p1_animation_data,1,i))
-
-    end
-
-    print(" ")
+    print(string.format("%X", 19).. " - ".. get_nth_byte(p1_animation_data,1,19))
 
     --p1_stats['x'] = get_p1_screen_x
     --p1_stats['y'] = get_p1_screen_y
@@ -292,5 +286,8 @@ end
 
 -- Initialize controller
 map_input()
+-- Load savestate
+manager:machine():load("1");
+
 -- main will be called after every frame
 emu.register_frame(main)
