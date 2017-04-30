@@ -147,12 +147,15 @@ end
 --[[
   State?
 
-  14 (00001110) - hitstun OR blockstun
-  10 (00001010) - attacking
-  8  (00001000) - blocking (not hit yet) 
-  4  (00000100) - jumping
-  2  (00000010) - crouching
-  0  (00000000) - standing
+  20 (00010100) - being thrown
+	14 (00001110) - hitstun OR blockstun
+	12 (00001100) - special move
+	10 (00001010) - attacking OR throwing
+	8  (00001000) - blocking (not hit yet)
+	6  (00000110) - wakeup (getting up after being thrown)
+	4  (00000100) - jumping
+	2  (00000010) - crouching
+	0  (00000000) - standing
 ]]--
 function get_player_state(player_num)
     return mem:read_i8(0xFF83C1 + (p_offset * player_num))
