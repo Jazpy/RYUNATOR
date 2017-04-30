@@ -1,0 +1,17 @@
+Add 0x0300 for P2's values
+
+Health
+	2 bytes - 0xFF83EA
+
+Flag for round start (P1 has control)
+	2 bytes - 0xFF83EE
+
+State?
+	14 (00001110) - hitstun OR blockstun
+	10 (00001010) - attacking
+	8  (00001000) - blocking (not hit yet) 
+	4  (00000100) - jumping
+	2  (00000010) - crouching
+	0  (00000000) - standing
+
+	1 byte - 0xFF83C1

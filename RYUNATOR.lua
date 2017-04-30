@@ -116,6 +116,14 @@ function get_pos_x(player_num)
     return mem:read_i16(0xFF83C4 + (p_offset * player_num))
 end
 
+function get_health(player_num)
+    return mem:read_i16(0xFF83EA + (p_offset * player_num))
+end
+
+function get_round_start(player_num)
+    return mem:read_i16(0xFF83EE + (p_offset * player_num))
+end
+
 function get_pos_y(player_num)
     return mem:read_i16(0xFF83C8 + (p_offset * player_num))
 end
@@ -136,8 +144,23 @@ function get_player_distance()
     return mem:read_i16(0xFF8540)
 end
 
+--[[
+  State?
+
+  14 (00001110) - hitstun OR blockstun
+  10 (00001010) - attacking
+  8  (00001000) - blocking (not hit yet) 
+  4  (00000100) - jumping
+  2  (00000010) - crouching
+  0  (00000000) - standing
+]]--
+function get_player_state()
+    return mem:read_18(0xFF83C1 + (p_offset * player_num))
+end
+
+-- Not working yet
 function get_animation_data(player_num)
-    return mem:read_i32(0xFF83D8+ (p_offset * player_num))
+    return mem:read_i32(0xFF83D8 + (p_offset * player_num))
 end
 --------------------
 -- END MEM ACCESS --
@@ -246,10 +269,7 @@ end
 --------------------
 
 
-function main()
-    p1_animation_data = get_animation_data(0)
-    print(string.format("%X", 19).. " - ".. get_nth_byte(p1_animation_data,1,19))
-
+function main()    
     --p1_stats['x'] = get_p1_screen_x
     --p1_stats['y'] = get_p1_screen_y
 
