@@ -167,12 +167,12 @@ end
 
 -- 0 = no block, 1 = standing block, 2 = crouching block
 function get_blocking(player_num)
-    return get_animation_byte(player_num, 17, 1)
+    return get_animation_byte(player_num, 0x11, 1)
 end
 
 -- 0 = standing, 1 = crouching
 function get_crouching(player_num)
-    return get_animation_byte(player_num, 18, 1)
+    return get_animation_byte(player_num, 0x12, 1)
 end
 
 -- Player, what byte to start reading from in the 24 byte sequence, how many bytes to read (1, 2, 4)
@@ -187,6 +187,46 @@ function get_animation_byte(player_num, byte, to_read)
       return mem:read_u32(anim_pointer + byte)
     end
 end
+
+function get_hitbox_attack_byte(player_num, byte)
+    hitbox_info = get_hitbox_info(player_num)
+    
+    -- Offset for atk hitboxes
+    attack_hitbox_offset = mem:read_u16(hitbox_info + 0x08)
+    attack_hitbox_list = hitbox_info + attack_hitbox_offset
+    
+    -- Offset defined in animation data
+    attack_hitbox_list_offset = get_animation_byte(player_num, 0x0C, 1)
+
+    -- multiply by the size of atk hitboxes (12 bytes)
+    curr_attack_hitbox = attack_hitbox_list + (attack_hitbox_list_offset * 12)
+    
+    -- Get the requested byte (atk hitboxes are defined by 12 bytes)
+    return mem:read_u8(curr_attack_hitbox + byte)
+end
+
+function get_hitbox_info(player_num)
+    hitbox_info_pointer = mem:read_u32(0xFF83F2 + (p_offset * player_num))
+    
+    return hitbox_info_pointer
+end
+
+-- player_num = player attacking
+-- 0 = no block, 1 = should block high, 2 = should block low
+function get_attack_block(player_num)
+    if get_animation_byte(player_num, 0x0C, 1) == 0 then
+      return 0
+    end
+    
+    attack_ex = get_hitbox_attack_byte(player_num, 0x7)
+    
+    if attack_ex == 0 or attack_ex == 1 or attack_ex == 3 then
+      return 2
+    elseif attack_ex == 2 then
+      return 1
+    end
+end
+
 --------------------
 -- END MEM ACCESS --
 --------------------
@@ -283,8 +323,10 @@ end
 --------------------
 
 
-function main()
-    print(get_blocking(0))
+function main() 
+    if get_animation_byte(0, 0x0C, 1) ~= 0 then
+      print(get_attack_block(0))
+    end
     
     --p1_stats['x'] = get_p1_screen_x
     --p1_stats['y'] = get_p1_screen_y
