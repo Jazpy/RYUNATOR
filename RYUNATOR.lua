@@ -37,19 +37,19 @@ local curr_special_move = { ["P1"] = 0, ["P2"] = 0 }
 ----------------------
 -- CONTROLLER INPUT --
 ----------------------
-
 local function set_input(key)
---    print("key is ".. key)
---    for kp,p in pairs(controllers) do
---        print("Values for table " .. kp)
---        for k,b in pairs(p) do
---            print(k .. " : " .. b.state)
---        end
---    end
+    --    print("key is ".. key)
+    --    for kp,p in pairs(controllers) do
+    --        print("Values for table " .. kp)
+    --        for k,b in pairs(p) do
+    --            print(k .. " : " .. b.state)
+    --        end
+    --    end
     for name, button in pairs(controllers[key]) do
         button.field:set_value(button.state)
     end
 end
+
 local function clear_input(controller_to_update)
     local key = controller_to_update == 0 and "P1" or "P2"
     for button in pairs(controllers[key]) do
@@ -253,7 +253,6 @@ end
 --------------------
 -- Helper Functions--
 --------------------
-
 function get_forward(player)
     local p1 = get_pos_x(0)
     local p2 = get_pos_x(1)
@@ -271,71 +270,43 @@ function get_forward(player)
             return " Left"
         end
     end
-
 end
----------------------
+
+function get_backward(player)
+    local p1 = get_pos_x(0)
+    local p2 = get_pos_x(1)
+
+    if player == 0 then
+        if p1 > p2 then
+            return " Right"
+        else
+            return " Left"
+        end
+    else
+        if p2 > p1 then
+            return " Right"
+        else
+            return " Left"
+        end
+    end
+end
+
+-------------------------
 -- End Helper Functions--
----------------------
+-------------------------
 
 
 --------------------
--- Player ACtions --
+-- Player Actions --
 --------------------
-function p1_neutral_jump()
-    controller["P1 Up"].state = 1
-    controller["P1 Left"].state = 0
-    controller["P1 Right"].state = 0
-    controller["P1 Down"].state = 0
-
-    set_input(controller)
-end
-
-function p1_hadouken()
-    -- Determine input based on current frame
-    if special_move_frame == 0 then
-        clear_input()
-        controller["P1 Down"].state = 1
-        curr_special_move = 1
-    elseif special_move_frame == 1 then
-        controller["P1 Down"].state = 1
-        controller["P1 Right"].state = 1
-    elseif special_move_frame == 2 then
-        controller["P1 Down"].state = 0
-        controller["P1 Right"].state = 1
-        controller["P1 Fierce Punch"].state = 1
-    end
-
-    set_input(controller)
-    special_move_frame = special_move_frame + 1
-
-    if special_move_frame == 3 then
-        -- Mark the move as finished
-        curr_special_move = 0
-    end
-end
-
-function p1_tatsumaki()
-    -- Determine input based on current frame
-    if special_move_frame == 0 then
-        clear_input()
-        controller["P1 Down"].state = 1
-
-        curr_special_move = 2
-    elseif special_move_frame == 1 then
-        controller["P1 Down"].state = 1
-        controller["P1 Left"].state = 1
-    elseif special_move_frame == 2 then
-        controller["P1 Down"].state = 0
-        controller["P1 Left"].state = 1
-        controller["P1 Roundhouse Kick"].state = 1
-    end
-
-    set_input(controller)
-    special_move_frame = special_move_frame + 1
-
-    if special_move_frame == 3 then
-        -- Mark the move as finished
-        curr_special_move = 0
+function neutral_jump(controller_to_update)
+    if get_pos_y(controller_to_update) <= 40 then
+        local key = controller_to_update == 0 and "P1" or "P2"
+        controllers[key]["P1 Up"].state = 1
+        controllers[key]["P1 Left"].state = 0
+        controllers[key]["P1 Right"].state = 0
+        controllers[key]["P1 Down"].state = 0
+        set_input(key)
     end
 end
 
@@ -343,19 +314,18 @@ function quarter_circle_forward(controller_to_update)
     local key = controller_to_update == 0 and "P1" or "P2"
     local forward = get_forward(controller_to_update)
     clear_input(controller_to_update)
-    print(special_move_frame[key])
     -- Determine input based on current frame
     if special_move_frame[key] == 0 then
         controllers[key][key .. " Down"].state = 1
-        curr_special_move[key] = 3
+        curr_special_move[key] = 1
     elseif special_move_frame[key] == 2 then
         controllers[key][key .. forward].state = 1
-        controllers[key][key .. " Down"].state = 0
+        controllers[key][key .. " Down"].state = 1
 
     elseif special_move_frame[key] == 4 then
-        controllers[key][key .. " Down"].state = 1
+        controllers[key][key .. " Down"].state = 0
         controllers[key][key .. forward].state = 1
-        controllers[key][key .. " Fierce Punch"].state = 1
+        controllers[key][key .. " Jab Punch"].state = 1
     end
 
     set_input(key)
@@ -367,6 +337,74 @@ function quarter_circle_forward(controller_to_update)
         -- Mark the move as finished
         curr_special_move[key] = 0
         clear_input(key)
+    end
+end
+
+function quarter_circle_back(controller_to_update)
+    -- Determine input based on current frame
+    local key = controller_to_update == 0 and "P1" or "P2"
+    local back = get_backward(controller_to_update)
+    clear_input(controller_to_update)
+    -- Determine input based on current frame
+    if special_move_frame[key] == 0 then
+        controllers[key][key .. " Down"].state = 1
+        curr_special_move[key] = 2
+
+    elseif special_move_frame[key] == 2 then
+
+        controllers[key][key .. " Down"].state = 1
+        controllers[key][key .. back].state = 1
+
+    elseif special_move_frame[key] == 4 then
+
+
+        controllers[key][key .. " Down"].state = 0
+        controllers[key][key .. back].state = 1
+        controllers[key][key .. " Roundhouse Kick"].state = 1
+    end
+
+    set_input(key)
+    special_move_frame[key] = special_move_frame[key] + 1
+
+    if special_move_frame[key] == 6 then
+        special_move_frame[key] = 0
+
+        -- Mark the move as finished
+        curr_special_move[key] = 0
+        clear_input(key)
+    end
+end
+
+function z_move(controller_to_update)
+    if get_pos_y(controller_to_update) <= 40 then
+
+        local key = controller_to_update == 0 and "P1" or "P2"
+        local forward = get_forward(controller_to_update)
+        clear_input(controller_to_update)
+        -- Determine input based on current frame
+        if special_move_frame[key] == 0 then
+            controllers[key][key .. forward].state = 1
+            curr_special_move[key] = 3
+        elseif special_move_frame[key] == 2 then
+            controllers[key][key .. " Down"].state = 1
+            controllers[key][key .. forward].state = 0
+
+        elseif special_move_frame[key] == 4 then
+            controllers[key][key .. " Down"].state = 1
+            controllers[key][key .. forward].state = 1
+            controllers[key][key .. " Fierce Punch"].state = 1
+        end
+
+        set_input(key)
+        special_move_frame[key] = special_move_frame[key] + 1
+
+        if special_move_frame[key] == 6 then
+            special_move_frame[key] = 0
+
+            -- Mark the move as finished
+            curr_special_move[key] = 0
+            clear_input(key)
+        end
     end
 end
 
@@ -389,43 +427,12 @@ end
 -- END NEAT --
 --------------
 function main()
-    --p1_stats['x'] = get_p1_screen_x
-    --p1_stats['y'] = get_p1_screen_y
-    quarter_circle_forward(0)
-    quarter_circle_forward(1)
-    --   if is_round_over()  then
-    --
-    --
-    --        print("round is over")
-    --        -- TODO get winner
-    --
-    --        -- TODO  calculate fitness for both players
-    --        -- TODO change genome/evolve
-    --    else
-    --        print("player 2 health " .. get_health(1))
-    --        print("p2 state is ".. get_player_state(1))
-    --    end
-    -- Check if we're inputting a special move
+
+    quarter_circle_back(0)
+    z_move(1)
+    print(get_pos_y(0))
 
 
-
---    if special_move_frame > 0 then
---
---        -- Call corresponding special move
---        -- Clear the input if we just finished inputting a special move
---        if curr_special_move == 0 then
---            clear_input()
---            special_move_frame = 0
---        elseif curr_special_move == 1 then
---            p1_hadouken()
---        elseif curr_special_move == 2 then
---            p1_tatsumaki()
---        elseif curr_special_move == 3 then
---            quarter_circle_forward()
---        end
---
---        return
---    end
 end
 
 -- Initialize controller
