@@ -1,5 +1,5 @@
 local mem = manager:machine().devices[":maincpu"].spaces["program"]
-
+--Player Controller
 -- Player stats dict
 local p1_stats, p2_stats = {}, {}
 -- Memory address offset to differentiate p1 and p2
@@ -8,63 +8,54 @@ local player_offset = 0x0300
 local projectile_offset = -0xC0
 -- Combines ports IN1 and IN2
 local controller
+local controllers
 
--- Input port: IN1
-local p1_stick_punches = {
-    "P1 Up",
-    "P1 Down",
-    "P1 Left",
-    "P1 Right",
-    "P1 Jab Punch",
-    "P1 Strong Punch",
-    "P1 Fierce Punch",
-}
-
--- Input port: IN2
-local p1_kicks = {
-    "P1 Short Kick",
-    "P1 Forward Kick",
-    "P1 Roundhouse Kick",
+local move_names = {
+    "Short Kick",
+    "Forward Kick",
+    "Roundhouse Kick",
+    "Jab Punch",
+    "Strong Punch",
+    "Fierce Punch",
+    "Up",
+    "Down",
+    "Left",
+    "Right",
 }
 
 -- Used to determine if we need to continue input for a special move accross several frames.
 -- counts the frame of the current special move.
-local special_move_frame = 0
+local special_move_frame = { ["P1"] = 0, ["P2"] = 0 }
+
 
 -- 0: no special move
 -- 1: Hadouken
 -- 2: Tatsumaki
 -- 3: Shoryuken
-local curr_special_move = 0
+local curr_special_move = { ["P1"] = 0, ["P2"] = 0 }
 
 ----------------------
 -- CONTROLLER INPUT --
 ----------------------
-local function set_input(buttons)
 
-    for name, button in pairs(buttons) do
+local function set_input(key)
+    print(key)
+    for name, button in pairs(controllers[key]) do
         button.field:set_value(button.state)
     end
 end
-
-local function clear_input()
-    controller["P1 Up"].state = 0
-    controller["P1 Left"].state = 0
-    controller["P1 Right"].state = 0
-    controller["P1 Down"].state = 0
-    controller["P1 Jab Punch"].state = 0
-    controller["P1 Strong Punch"].state = 0
-    controller["P1 Fierce Punch"].state = 0
-    controller["P1 Short Kick"].state = 0
-    controller["P1 Forward Kick"].state = 0
-    controller["P1 Roundhouse Kick"].state = 0
-
-    set_input(controller)
+local function clear_input(controller_to_update)
+    local key = controller_to_update == 0 and "P1" or "P2"
+    for button in pairs(controllers[key]) do
+        controllers[key][button].state = 0
+    end
+    set_input(key)
 end
 
 local function map_input()
-    controller = {}
-
+    controllers = {}
+    controllers["P1"] = {}
+    controllers["P2"] = {}
     -- Table with the arcade's ports
     local ports = manager:machine():ioport().ports
 
@@ -73,37 +64,27 @@ local function map_input()
     -- Get input port for kicks
     local IN2 = ports[":IN2"]
 
-    -- Map stick and punches for P1
-    for i = 1, #p1_stick_punches do
-        -- Iterate over fields (button names) and create button objects
-        for field_name, field in pairs(IN1.fields) do
-
-            if field_name == p1_stick_punches[i] then
-                local button = {}
-                button.port = IN1
-                button.field = field
-                button.state = 0
-                controller[p1_stick_punches[i]] = button
-            end
-        end
+    -- Iterate over fields (button names) and create button objects
+    for field_name, field in pairs(IN1.fields) do
+        local button = {}
+        button.port = IN1
+        button.field = field
+        button.state = 0
+        button.field_name = field_name
+        controllers[string.sub(field_name, 1, 2)][field_name] = button
     end
 
-    -- Map kicks for P1
-    for i = 1, #p1_kicks do
-        -- Iterate over fields (button names) and create button objects
-        for field_name, field in pairs(IN2.fields) do
 
-            if field_name == p1_kicks[i] then
-                local button = {}
-                button.port = IN2
-                button.field = field
-                button.state = 0
-                controller[p1_kicks[i]] = button
-            end
-        end
+    -- Iterate over fields (button names) and create button objects
+    for field_name, field in pairs(IN2.fields) do
+        local button = {}
+        button.port = IN2
+        button.field = field
+        button.state = 0
+        button.field_name = field_name
+        controllers[string.sub(field_name, 1, 2)][field_name] = button
     end
 
-    set_input(controller)
 end
 
 --------------------------
@@ -118,36 +99,36 @@ end
 -- Player, what byte to start reading from in the 24 byte sequence, how many bytes to read (1, 2, 4)
 function get_animation_byte(player_num, byte, to_read)
     anim_pointer = mem:read_u32(0xFF83D8 + (player_offset * player_num))
-    
+
     if to_read == 1 then
-      return mem:read_u8(anim_pointer + byte)
+        return mem:read_u8(anim_pointer + byte)
     elseif to_read == 2 then
-      return mem:read_u16(anim_pointer + byte)
+        return mem:read_u16(anim_pointer + byte)
     else
-      return mem:read_u32(anim_pointer + byte)
+        return mem:read_u32(anim_pointer + byte)
     end
 end
 
 function get_hitbox_attack_byte(player_num, byte)
     hitbox_info = get_hitbox_info(player_num)
-    
+
     -- Offset for atk hitboxes
     attack_hitbox_offset = mem:read_u16(hitbox_info + 0x08)
     attack_hitbox_list = hitbox_info + attack_hitbox_offset
-    
+
     -- Offset defined in animation data
     attack_hitbox_list_offset = get_animation_byte(player_num, 0x0C, 1)
 
     -- multiply by the size of atk hitboxes (12 bytes)
     curr_attack_hitbox = attack_hitbox_list + (attack_hitbox_list_offset * 12)
-    
+
     -- Get the requested byte (atk hitboxes are defined by 12 bytes)
     return mem:read_u8(curr_attack_hitbox + byte)
 end
 
 function get_hitbox_info(player_num)
     hitbox_info_pointer = mem:read_u32(0xFF83F2 + (player_offset * player_num))
-    
+
     return hitbox_info_pointer
 end
 
@@ -175,7 +156,7 @@ end
 	4  (00000100) - jumping
 	2  (00000010) - crouching
 	0  (00000000) - standing
-]]--
+]] --
 function get_player_state(player_num)
     return mem:read_u8(0xFF83C1 + (player_offset * player_num))
 end
@@ -220,15 +201,15 @@ end
 -- 0 = no attack, 1 = should block high, 2 = should block low
 function get_attack_block(player_num)
     if get_animation_byte(player_num, 0x0C, 1) == 0 then
-      return 0
+        return 0
     end
-    
+
     attack_ex = get_hitbox_attack_byte(player_num, 0x7)
-    
+
     if attack_ex == 0 or attack_ex == 1 or attack_ex == 3 then
-      return 2
+        return 2
     elseif attack_ex == 2 then
-      return 1
+        return 1
     end
 end
 
@@ -238,7 +219,7 @@ end
 
 -- Special move with invincibility OR waking up
 function is_invincible(player_num)
-    return  get_animation_byte(player_num, 0x08, 1) == 0 and
+    return get_animation_byte(player_num, 0x08, 1) == 0 and
             get_animation_byte(player_num, 0x09, 1) == 0 and
             get_animation_byte(player_num, 0x0A, 1) == 0 and
             get_animation_byte(player_num, 0x0D, 1) == 1
@@ -324,29 +305,35 @@ function p1_tatsumaki()
     end
 end
 
-function p1_shoryuken()
+function quarter_circle_forward(controller_to_update)
+    local key = controller_to_update == 0 and "P1" or "P2"
     -- Determine input based on current frame
-    if special_move_frame == 0 then
-        clear_input()
-        controller["P1 Right"].state = 1
 
-        curr_special_move = 3
+    if special_move_frame[key] == 0 then
+        clear_input(controller_to_update)
+        controllers[key][key .. " Right"].state = 1
+
+        curr_special_move[key] = 3
     elseif special_move_frame == 1 then
-        controller["P1 Down"].state = 1
-        controller["P1 Right"].state = 0
+        controllers[key][key .. " Down"].state = 1
+        controllers[key][key .. " Right"].state = 0
     elseif special_move_frame == 2 then
-        controller["P1 Down"].state = 1
-        controller["P1 Right"].state = 1
-        controller["P1 Fierce Punch"].state = 1
+        controllers[key][key .. " Down"].state = 1
+        controllers[key][key .. " Right"].state = 1
+        controllers[key][key .. " Fierce Punch"].state = 1
     end
 
-    set_input(controller)
-    special_move_frame = special_move_frame + 1
+    set_input(controllers)
+    special_move_frame[key] = special_move_frame[key] + 1
 
-    if special_move_frame == 3 then
+    if special_move_frame[key] == 3 then
         -- Mark the move as finished
-        curr_special_move = 0
+        curr_special_move[key] = 0
     end
+end
+
+function is_round_over()
+    return get_timer() == 0 -- or get_player_state(0) == 2 or get_player_state(1) == 1
 end
 
 --------------------
@@ -356,7 +343,6 @@ end
 ----------
 -- NEAT --
 ----------
-
 function fitness()
     return 0
 end
@@ -364,30 +350,45 @@ end
 --------------
 -- END NEAT --
 --------------
-
-function main()    
+function main()
     --p1_stats['x'] = get_p1_screen_x
     --p1_stats['y'] = get_p1_screen_y
+    quarter_circle_forward(0)
 
+    --   if is_round_over()  then
+    --
+    --
+    --        print("round is over")
+    --        -- TODO get winner
+    --
+    --        -- TODO  calculate fitness for both players
+    --        -- TODO change genome/evolve
+    --    else
+    --        print("player 2 health " .. get_health(1))
+    --        print("p2 state is ".. get_player_state(1))
+    --    end
     -- Check if we're inputting a special move
-    if special_move_frame > 0 then
 
-        -- Call corresponding special move
-        -- Clear the input if we just finished inputting a special move
-        if curr_special_move == 0 then
-            clear_input()
-            special_move_frame = 0
-        elseif curr_special_move == 1 then
-            p1_hadouken()
-        elseif curr_special_move == 2 then
-            p1_tatsumaki()
-        elseif curr_special_move == 3 then
-            p1_shoryuken()
-        end
 
-        return
-    end
 
+--
+--    if special_move_frame > 0 then
+--
+--        -- Call corresponding special move
+--        -- Clear the input if we just finished inputting a special move
+--        if curr_special_move == 0 then
+--            clear_input()
+--            special_move_frame = 0
+--        elseif curr_special_move == 1 then
+--            p1_hadouken()
+--        elseif curr_special_move == 2 then
+--            p1_tatsumaki()
+--        elseif curr_special_move == 3 then
+--            quarter_circle_forward()
+--        end
+--
+--        return
+--    end
 end
 
 -- Initialize controller
