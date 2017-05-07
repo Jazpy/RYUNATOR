@@ -1,10 +1,10 @@
 Add 0x0300 for P2's values
 
+Player has control (Flag for round start)
+	2 bytes - 0xFF83EE
+
 Health
 	2 bytes - 0xFF83EA
-
-Flag for round start (P1 has control)
-	2 bytes - 0xFF83EE
 
 State?
 	20 (00010100) - thrown / grounded
@@ -19,9 +19,16 @@ State?
 
 	1 byte - 0xFF83C1
 
-Timer
+Independent values:
 
+Timer
 	2 bytes - 0xFF8ABE
 
-	First byte represents seconds (in hex)
+	First byte represents "seconds" (in hex)
 	Second byte seems to represent centiseconds or something like that
+
+Round end flag
+	2 bytes - 0xFF8AC0
+
+Round winner (1 -> P1, 2 -> P2, 255 -> Draw)
+	1 byte - 0xFF8AC2
