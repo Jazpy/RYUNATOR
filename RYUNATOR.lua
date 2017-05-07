@@ -10,19 +10,15 @@ local projectile_offset = -0xC0
 local controller
 local controllers
 
-local move_names = {
-    "Short Kick",
-    "Forward Kick",
-    "Roundhouse Kick",
-    "Jab Punch",
-    "Strong Punch",
-    "Fierce Punch",
-    "Up",
-    "Down",
-    "Left",
-    "Right",
+local punches = {
+    " Jab Punch",
+    " Strong Punch",
+    " Fierce Punch",
 }
-
+local kicks = {
+    " Short Kick",
+    " Forward Kick",
+    " Roundhouse Kick",}
 -- Used to determine if we need to continue input for a special move accross several frames.
 -- counts the frame of the current special move.
 local special_move_frame = { ["P1"] = 0, ["P2"] = 0 }
@@ -310,9 +306,10 @@ function neutral_jump(controller_to_update)
     end
 end
 
-function quarter_circle_forward(controller_to_update)
+function quarter_circle_forward(controller_to_update, punch_type)
     local key = controller_to_update == 0 and "P1" or "P2"
     local forward = get_forward(controller_to_update)
+    local attack = punches[punch_type]
     clear_input(controller_to_update)
     -- Determine input based on current frame
     if special_move_frame[key] == 0 then
@@ -325,7 +322,7 @@ function quarter_circle_forward(controller_to_update)
     elseif special_move_frame[key] == 4 then
         controllers[key][key .. " Down"].state = 0
         controllers[key][key .. forward].state = 1
-        controllers[key][key .. " Jab Punch"].state = 1
+        controllers[key][key .. attack].state = 1
     end
 
     set_input(key)
@@ -340,8 +337,9 @@ function quarter_circle_forward(controller_to_update)
     end
 end
 
-function quarter_circle_back(controller_to_update)
+function quarter_circle_back(controller_to_update, kick_type)
     -- Determine input based on current frame
+    local attack = kicks[kick_type]
     local key = controller_to_update == 0 and "P1" or "P2"
     local back = get_backward(controller_to_update)
     clear_input(controller_to_update)
@@ -360,7 +358,7 @@ function quarter_circle_back(controller_to_update)
 
         controllers[key][key .. " Down"].state = 0
         controllers[key][key .. back].state = 1
-        controllers[key][key .. " Roundhouse Kick"].state = 1
+        controllers[key][key .. attack].state = 1
     end
 
     set_input(key)
@@ -375,9 +373,9 @@ function quarter_circle_back(controller_to_update)
     end
 end
 
-function z_move(controller_to_update)
+function z_move(controller_to_update, attack_type)
     if get_pos_y(controller_to_update) <= 40 then
-
+        local attack = punches[attack_type]
         local key = controller_to_update == 0 and "P1" or "P2"
         local forward = get_forward(controller_to_update)
         clear_input(controller_to_update)
@@ -392,7 +390,7 @@ function z_move(controller_to_update)
         elseif special_move_frame[key] == 4 then
             controllers[key][key .. " Down"].state = 1
             controllers[key][key .. forward].state = 1
-            controllers[key][key .. " Fierce Punch"].state = 1
+            controllers[key][key .. attack].state = 1
         end
 
         set_input(key)
@@ -428,9 +426,7 @@ end
 --------------
 function main()
 
-    quarter_circle_back(0)
-    z_move(1)
-    print(get_pos_y(0))
+print("WAT DO HERE")
 
 
 end
