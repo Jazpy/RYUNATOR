@@ -7,12 +7,12 @@ Flag for round start (P1 has control)
 	2 bytes - 0xFF83EE
 
 State?
-	20 (00010100) - being thrown
+	20 (00010100) - thrown / grounded
 	14 (00001110) - hitstun OR blockstun
 	12 (00001100) - special move
 	10 (00001010) - attacking OR throwing
 	8  (00001000) - blocking (not hit yet)
-	6  (00000110) - wakeup (getting up after being thrown)
+	6  (00000110) - ?
 	4  (00000100) - jumping
 	2  (00000010) - crouching
 	0  (00000000) - standing
