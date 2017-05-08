@@ -18,7 +18,8 @@ local punches = {
 local kicks = {
     " Short Kick",
     " Forward Kick",
-    " Roundhouse Kick",}
+    " Roundhouse Kick",
+}
 -- Used to determine if we need to continue input for a special move accross several frames.
 -- counts the frame of the current special move.
 local special_move_frame = { ["P1"] = 0, ["P2"] = 0 }
@@ -406,9 +407,7 @@ function z_move(controller_to_update, attack_type)
     end
 end
 
-function is_round_over()
-    return get_timer() == 0 -- or get_player_state(0) == 2 or get_player_state(1) == 1
-end
+
 
 --------------------
 -- END P1 ACTIONS --
@@ -426,9 +425,7 @@ end
 --------------
 function main()
 
-print("WAT DO HERE")
-
-
+    print("WAT DO HERE")
 end
 
 -- Initialize controller
