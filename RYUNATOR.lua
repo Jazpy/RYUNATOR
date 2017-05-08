@@ -1,5 +1,5 @@
 local mem = manager:machine().devices[":maincpu"].spaces["program"]
---Player Controller
+-- Player Controller
 -- Player stats dict
 local p1_stats, p2_stats = {}, {}
 -- Memory address offset to differentiate p1 and p2
@@ -247,9 +247,9 @@ end
 -- END MEM ACCESS --
 --------------------
 
---------------------
--- Helper Functions--
---------------------
+----------------------
+-- HELPER FUNCTIONS --
+----------------------
 function get_forward(player)
     local p1 = get_pos_x(0)
     local p2 = get_pos_x(1)
@@ -288,16 +288,16 @@ function get_backward(player)
     end
 end
 
--------------------------
--- End Helper Functions--
--------------------------
+--------------------------
+-- END HELPER FUNCTIONS --
+--------------------------
 
 
 --------------------
--- Player Actions --
+-- PLAYER ACTIONS --
 --------------------
 function neutral_jump(controller_to_update)
-    if get_pos_y(controller_to_update) <= 40 then
+    if not is_midair(controller_to_update) then
         local key = controller_to_update == 0 and "P1" or "P2"
         controllers[key]["P1 Up"].state = 1
         controllers[key]["P1 Left"].state = 0
@@ -315,26 +315,24 @@ function quarter_circle_forward(controller_to_update, punch_type)
     -- Determine input based on current frame
     if special_move_frame[key] == 0 then
         controllers[key][key .. " Down"].state = 1
-        curr_special_move[key] = 1
+    elseif special_move_frame[key] == 1 then
+        controllers[key][key .. " Down"].state = 1
+        controllers[key][key .. forward].state = 1
     elseif special_move_frame[key] == 2 then
         controllers[key][key .. forward].state = 1
-        controllers[key][key .. " Down"].state = 1
-
-    elseif special_move_frame[key] == 4 then
-        controllers[key][key .. " Down"].state = 0
-        controllers[key][key .. forward].state = 1
         controllers[key][key .. attack].state = 1
-    end
-
-    set_input(key)
-    special_move_frame[key] = special_move_frame[key] + 1
-
-    if special_move_frame[key] == 6 then
+    elseif special_move_frame[key] == 3 then
         special_move_frame[key] = 0
 
         -- Mark the move as finished
         curr_special_move[key] = 0
         clear_input(key)
+    end
+
+    set_input(key)
+    
+    if curr_special_move[key] ~= 0 then
+        special_move_frame[key] = special_move_frame[key] + 1
     end
 end
 
@@ -347,71 +345,59 @@ function quarter_circle_back(controller_to_update, kick_type)
     -- Determine input based on current frame
     if special_move_frame[key] == 0 then
         controllers[key][key .. " Down"].state = 1
-        curr_special_move[key] = 2
-
-    elseif special_move_frame[key] == 2 then
-
+    elseif special_move_frame[key] == 1 then
         controllers[key][key .. " Down"].state = 1
         controllers[key][key .. back].state = 1
-
-    elseif special_move_frame[key] == 4 then
-
-
-        controllers[key][key .. " Down"].state = 0
+    elseif special_move_frame[key] == 2 then
         controllers[key][key .. back].state = 1
         controllers[key][key .. attack].state = 1
-    end
-
-    set_input(key)
-    special_move_frame[key] = special_move_frame[key] + 1
-
-    if special_move_frame[key] == 6 then
+    elseif special_move_frame[key] == 3 then
         special_move_frame[key] = 0
 
         -- Mark the move as finished
         curr_special_move[key] = 0
         clear_input(key)
     end
-end
 
-function z_move(controller_to_update, attack_type)
-    if get_pos_y(controller_to_update) <= 40 then
-        local attack = punches[attack_type]
-        local key = controller_to_update == 0 and "P1" or "P2"
-        local forward = get_forward(controller_to_update)
-        clear_input(controller_to_update)
-        -- Determine input based on current frame
-        if special_move_frame[key] == 0 then
-            controllers[key][key .. forward].state = 1
-            curr_special_move[key] = 3
-        elseif special_move_frame[key] == 2 then
-            controllers[key][key .. " Down"].state = 1
-            controllers[key][key .. forward].state = 0
-
-        elseif special_move_frame[key] == 4 then
-            controllers[key][key .. " Down"].state = 1
-            controllers[key][key .. forward].state = 1
-            controllers[key][key .. attack].state = 1
-        end
-
-        set_input(key)
+    set_input(key)
+    
+    if curr_special_move[key] ~= 0 then
         special_move_frame[key] = special_move_frame[key] + 1
-
-        if special_move_frame[key] == 6 then
-            special_move_frame[key] = 0
-
-            -- Mark the move as finished
-            curr_special_move[key] = 0
-            clear_input(key)
-        end
     end
 end
 
+function z_move(controller_to_update, attack_type)
+    local attack = punches[attack_type]
+    local key = controller_to_update == 0 and "P1" or "P2"
+    local forward = get_forward(controller_to_update)
+    clear_input(controller_to_update)
+    -- Determine input based on current frame
+    if special_move_frame[key] == 0 then
+        controllers[key][key .. forward].state = 1
+    elseif special_move_frame[key] == 1 then
+        controllers[key][key .. " Down"].state = 1
+    elseif special_move_frame[key] == 2 then
+        controllers[key][key .. forward].state = 1
+        controllers[key][key .. " Down"].state = 1
+        controllers[key][key .. attack].state = 1
+    elseif special_move_frame[key] == 3 then
+        special_move_frame[key] = 0
 
+        -- Mark the move as finished
+        curr_special_move[key] = 0
+        clear_input(key)
+    end
 
---------------------
--- END P1 ACTIONS --
---------------------
+    set_input(key)
+    
+    if curr_special_move[key] ~= 0 then
+        special_move_frame[key] = special_move_frame[key] + 1
+    end
+end
+
+------------------------
+-- END PLAYER ACTIONS --
+------------------------
 
 ----------
 -- NEAT --
@@ -423,9 +409,54 @@ end
 --------------
 -- END NEAT --
 --------------
-function main()
 
-    print("WAT DO HERE")
+function p1_frame()
+  
+    -- Check if we're inputting a special move
+    if curr_special_move["P1"] ~= 0 then
+      
+        -- Call corresponding special move
+        if curr_special_move["P1"] == 1 then
+            quarter_circle_forward(0, 2)
+        elseif curr_special_move["P1"] == 2 then
+            quarter_circle_back(0, 2)
+        elseif curr_special_move["P1"] == 3 then
+            z_move(0, 2)
+        end
+
+        return
+    end
+    
+end
+
+function p2_frame()
+  
+    -- Check if we're inputting a special move
+    if curr_special_move["P2"] ~= 0 then
+      
+        -- Call corresponding special move
+        if curr_special_move["P2"] == 1 then
+            quarter_circle_forward(1, 2)
+        elseif curr_special_move["P2"] == 2 then
+            quarter_circle_back(1, 2)
+        elseif curr_special_move["P2"] == 3 then
+            z_move(1, 2)
+        end
+
+        return
+    end
+    
+end
+
+function main()
+    -- Testing out special moves
+    if get_timer() % 10 == 0 then
+        curr_special_move["P1"] = 3
+        curr_special_move["P2"] = 3
+    end
+  
+    p1_frame()
+    p2_frame()
 end
 
 -- Initialize controller
