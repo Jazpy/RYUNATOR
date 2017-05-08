@@ -410,53 +410,35 @@ end
 -- END NEAT --
 --------------
 
-function p1_frame()
-  
+
+
+
+function player_frame(player)
+    local key = player == 0 and "P1" or "P2"
     -- Check if we're inputting a special move
-    if curr_special_move["P1"] ~= 0 then
-      
+    if curr_special_move[key] ~= 0 then
         -- Call corresponding special move
-        if curr_special_move["P1"] == 1 then
-            quarter_circle_forward(0, 2)
-        elseif curr_special_move["P1"] == 2 then
-            quarter_circle_back(0, 2)
-        elseif curr_special_move["P1"] == 3 then
-            z_move(0, 2)
+        if curr_special_move[key] == 1 then
+            quarter_circle_forward(player, 2)
+        elseif curr_special_move[key] == 2 then
+            quarter_circle_back(player, 2)
+        elseif curr_special_move[key] == 3 then
+            z_move(player, 2)
         end
 
         return
     end
-    
-end
-
-function p2_frame()
-  
-    -- Check if we're inputting a special move
-    if curr_special_move["P2"] ~= 0 then
-      
-        -- Call corresponding special move
-        if curr_special_move["P2"] == 1 then
-            quarter_circle_forward(1, 2)
-        elseif curr_special_move["P2"] == 2 then
-            quarter_circle_back(1, 2)
-        elseif curr_special_move["P2"] == 3 then
-            z_move(1, 2)
-        end
-
-        return
-    end
-    
 end
 
 function main()
     -- Testing out special moves
-    if get_timer() % 10 == 0 then
+    if get_timer() % 3 == 0 then
         curr_special_move["P1"] = 3
         curr_special_move["P2"] = 3
     end
-  
-    p1_frame()
-    p2_frame()
+
+    player_frame(0)
+    player_frame(1)
 end
 
 -- Initialize controller
