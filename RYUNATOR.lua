@@ -3,7 +3,9 @@ local mem = manager:machine().devices[":maincpu"].spaces["program"]
 -- Player stats dict
 local p1_stats, p2_stats = {}, {}
 -- Memory address offset to differentiate p1 and p2
-local p_offset = 0x0300
+local player_offset = 0x0300
+-- Memory address offset for projectile slots
+local projectile_offset = -0xC0
 -- Combines ports IN1 and IN2
 local controller
 
@@ -112,72 +114,10 @@ end
 -- MEM ACCESS --
 ----------------
 -- The parameter represents which player's info you want, indexed from 0.
-function get_pos_x(player_num)
-    return mem:read_i16(0xFF83C4 + (p_offset * player_num))
-end
-
-function get_health(player_num)
-    return mem:read_i16(0xFF83EA + (p_offset * player_num))
-end
-
-function get_round_start(player_num)
-    return mem:read_i16(0xFF83EE + (p_offset * player_num))
-end
-
-function get_pos_y(player_num)
-    return mem:read_i16(0xFF83C8 + (p_offset * player_num))
-end
-
-function get_defense_value(player_num)
-    return mem:read_i16(0xFF83C4 + (p_offset * player_num))
-end
-
-function is_player_midair(player_num)
-    return mem:read_i16(0xFF853F + (p_offset * player_num))
-end
-
-function get_histop_time()
-    return mem:read_i16(0xFF8405 + (p_offset * player_num))
-end
-
-function get_player_distance()
-    return mem:read_i16(0xFF8540)
-end
-
---[[
-  State?
-
-  20 (00010100) - being thrown
-	14 (00001110) - hitstun OR blockstun
-	12 (00001100) - special move
-	10 (00001010) - attacking OR throwing
-	8  (00001000) - blocking (not hit yet)
-	6  (00000110) - wakeup (getting up after being thrown)
-	4  (00000100) - jumping
-	2  (00000010) - crouching
-	0  (00000000) - standing
-]]--
-function get_player_state(player_num)
-    return mem:read_i8(0xFF83C1 + (p_offset * player_num))
-end
-
-function get_timer()
-    return tonumber(string.format("%x", mem:read_u8(0xFF8ABE)))
-end
-
--- 0 = no block, 1 = standing block, 2 = crouching block
-function get_blocking(player_num)
-    return get_animation_byte(player_num, 0x11, 1)
-end
-
--- 0 = standing, 1 = crouching
-function get_crouching(player_num)
-    return get_animation_byte(player_num, 0x12, 1)
-end
 
 -- Player, what byte to start reading from in the 24 byte sequence, how many bytes to read (1, 2, 4)
 function get_animation_byte(player_num, byte, to_read)
-    anim_pointer = mem:read_u32(0xFF83D8 + (p_offset * player_num))
+    anim_pointer = mem:read_u32(0xFF83D8 + (player_offset * player_num))
     
     if to_read == 1 then
       return mem:read_u8(anim_pointer + byte)
@@ -206,13 +146,87 @@ function get_hitbox_attack_byte(player_num, byte)
 end
 
 function get_hitbox_info(player_num)
-    hitbox_info_pointer = mem:read_u32(0xFF83F2 + (p_offset * player_num))
+    hitbox_info_pointer = mem:read_u32(0xFF83F2 + (player_offset * player_num))
     
     return hitbox_info_pointer
 end
 
+function get_health(player_num)
+    return mem:read_u16(0xFF83EA + (player_offset * player_num))
+end
+
+function has_control(player_num)
+    return mem:read_u16(0xFF83EE + (player_offset * player_num)) == 1
+end
+
+function get_timer()
+    return tonumber(string.format("%x", mem:read_u8(0xFF8ABE)))
+end
+
+function is_round_finished()
+    return mem:read_u16(0xFF8AC0) == 1
+end
+
+-- Default 0, 1 -> P1, 2 -> P2, 255 -> Draw
+function get_round_winner()
+    return mem:read_u8(0xFF8AC2)
+end
+
+--[[
+  State?
+
+  20 (00010100) - thrown / grounded
+	14 (00001110) - hitstun OR blockstun
+	12 (00001100) - special move
+	10 (00001010) - attacking OR throwing
+	8  (00001000) - blocking (not hit yet)
+	6  (00000110) - ?
+	4  (00000100) - jumping
+	2  (00000010) - crouching
+	0  (00000000) - standing
+]]--
+function get_player_state(player_num)
+    return mem:read_u8(0xFF83C1 + (player_offset * player_num))
+end
+
+-- NN INPUTS --
+
+function get_pos_x(player_num)
+    return mem:read_u16(0xFF83C4 + (player_offset * player_num))
+end
+
+function get_pos_y(player_num)
+    return mem:read_u16(0xFF83C8 + (player_offset * player_num))
+end
+
+function get_x_distance()
+    return mem:read_u16(0xFF8540)
+end
+
+function get_y_distance()
+    return mem:read_u16(0xFF8542)
+end
+
+function is_midair(player_num)
+    return mem:read_u16(0xFF853F + (player_offset * player_num)) > 0
+end
+
+function is_thrown(player_num)
+    return get_player_state(player_num) == 20
+end
+
+function is_crouching(player_num)
+    return get_animation_byte(player_num, 0x12, 1) == 1
+end
+
+-- player_num = player blocking
+-- 0 = no block, 1 = standing block, 2 = crouching block
+function get_blocking(player_num)
+    return get_animation_byte(player_num, 0x11, 1)
+end
+
 -- player_num = player attacking
--- 0 = no block, 1 = should block high, 2 = should block low
+-- 0 = no attack, 1 = should block high, 2 = should block low
 function get_attack_block(player_num)
     if get_animation_byte(player_num, 0x0C, 1) == 0 then
       return 0
@@ -227,10 +241,36 @@ function get_attack_block(player_num)
     end
 end
 
+function is_in_hitstun(player_num)
+    return get_player_state(player_num) == 14 and get_blocking(player_num) == 0
+end
+
+-- Special move with invincibility OR waking up
+function is_invincible(player_num)
+    return  get_animation_byte(player_num, 0x08, 1) == 0 and
+            get_animation_byte(player_num, 0x09, 1) == 0 and
+            get_animation_byte(player_num, 0x0A, 1) == 0 and
+            get_animation_byte(player_num, 0x0D, 1) == 1
+end
+
+function is_cornered(player_num)
+    return get_pos_x(player_num) > 935 or get_pos_x(player_num) < 345
+end
+
+-- 8 projectile slots, indexed from 0
+function projectile_pos_x(projectile_slot)
+    return mem:read_u16(0xFF98BC + (projectile_offset * projectile_slot))
+end
+
+function projectile_pos_y(projectile_slot)
+    return mem:read_u16(0xFF98C0 + (projectile_offset * projectile_slot))
+end
+
+-- END NN INPUTS --
+
 --------------------
 -- END MEM ACCESS --
 --------------------
-
 
 ----------------
 -- P1 ACTIONS --
@@ -322,12 +362,19 @@ end
 -- END P1 ACTIONS --
 --------------------
 
+----------
+-- NEAT --
+----------
 
-function main() 
-    if get_animation_byte(0, 0x0C, 1) ~= 0 then
-      print(get_attack_block(0))
-    end
-    
+function fitness()
+    return 0
+end
+
+--------------
+-- END NEAT --
+--------------
+
+function main()
     --p1_stats['x'] = get_p1_screen_x
     --p1_stats['y'] = get_p1_screen_y
 
@@ -349,17 +396,7 @@ function main()
 
         return
     end
---[[
-    local distance = get_player_distance()
 
-    if distance > 150 then
-        p1_hadouken()
-    elseif distance > 90 and distance < 100 then
-        p1_tatsumaki()
-    elseif distance > 1 and distance < 10 then
-        p1_shoryuken()
-    end
-]]--
 end
 
 -- Initialize controller
