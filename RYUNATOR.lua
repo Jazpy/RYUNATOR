@@ -139,12 +139,21 @@ function get_health(player_num)
     return mem:read_u16(0xFF83EA + (player_offset * player_num))
 end
 
-function get_round_start(player_num)
-    return mem:read_u16(0xFF83EE + (player_offset * player_num))
+function has_control(player_num)
+    return mem:read_u16(0xFF83EE + (player_offset * player_num)) == 1
 end
 
 function get_timer()
     return tonumber(string.format("%x", mem:read_u8(0xFF8ABE)))
+end
+
+function is_round_finished()
+    return mem:read_u16(0xFF8AC0) == 1
+end
+
+-- Default 0, 1 -> P1, 2 -> P2, 255 -> Draw
+function get_round_winner()
+    return mem:read_u8(0xFF8AC2)
 end
 
 --[[
