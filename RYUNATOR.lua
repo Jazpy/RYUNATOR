@@ -260,7 +260,18 @@ function is_invincible(player_num)
 end
 
 function is_cornered(player_num)
-	return num(get_pos_x(player_num) > 935 or get_pos_x(player_num) < 335)
+
+    local pos_player = get_pos_x(player_num)
+    local pos_other = get_pos_x((player_num + 1) % 2)
+      
+    if pos_player > 935 and pos_other < pos_player then
+      return true
+    elseif pos_player < 345 and pos_other > pos_player then
+      return true
+    end
+    
+    return false
+
 end
 
 -- 8 projectile slots, indexed from 0
@@ -514,6 +525,7 @@ function player_frame(player)
 end
 
 function main()
+
 	-- Testing out special moves
 	if get_timer() % 3 == 0 then
 		curr_special_move["P1"] = 1
@@ -540,6 +552,7 @@ function main()
 
 	player_frame(0)
 	player_frame(1)
+
 end
 
 -- Initialize controller
