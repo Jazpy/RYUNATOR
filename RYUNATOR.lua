@@ -10,6 +10,8 @@ local projectile_offset = -0xC0
 local controller
 local controllers
 
+local max_health = {}
+local time_cornered = {}
 local punches = {
 	" Jab Punch",
 	" Strong Punch",
@@ -44,7 +46,6 @@ local outputs = {
 -- Used to determine if we need to continue input for a special move accross several frames.
 -- counts the frame of the current special move.
 local special_move_frame = { ["P1"] = 0, ["P2"] = 0 }
-
 
 -- 0: no special move
 -- 1: Hadouken
@@ -259,7 +260,7 @@ function is_invincible(player_num)
 end
 
 function is_cornered(player_num)
-	return num(get_pos_x(player_num) > 935 or get_pos_x(player_num) < 345)
+	return num(get_pos_x(player_num) > 935 or get_pos_x(player_num) < 335)
 end
 
 -- 8 projectile slots, indexed from 0
@@ -320,6 +321,16 @@ function get_backward(player)
 			return " Left"
 		end
 	end
+end
+
+function start_round()
+	clear_input(0)
+	clear_input(1)
+	manager:machine():load("1");
+	max_health[1] = get_health(0) < 144 and 144 or get_health(0)
+	max_health[2] = get_health(1) < 144 and 144 or get_health(1)
+	time_cornered[1] = 0
+	time_cornered[2] = 0
 end
 
 --------------------------
@@ -436,12 +447,15 @@ end
 ----------
 -- NEAT --
 ----------
+-- TODO get attack type
 function get_inputs(player_num)
 	-- Without keys to ensure their order is always maintained
 	local input_table = {
 		get_pos_x(player_num),
 		get_pos_y(player_num),
 		get_x_distance(player_num),
+		get_health(0),
+		get_health(1),
 		is_cornered(player_num),
 		is_midair(player_num),
 		is_thrown(player_num),
@@ -459,8 +473,24 @@ function get_inputs(player_num)
 	return input_table
 end
 
-function fitness()
-	return 0
+function player_fitness(player_num)
+	local enemy = player_num == 0 and 2 or 1
+	local key = player_num == 0 and "P1" or "P2"
+
+	local multiplier = math.ceil((get_timer() + 1) / 20)
+
+	local damage_taken = max_health[player_num +1] - get_health(player_num)
+	local damage_made = max_health[enemy] - get_health(enemy - 1 )
+	local bonus = get_round_winner() == player_num + 1 and get_timer()*5 or 0
+
+	print("max health for " .. key .. " "..max_health[player_num +1 ] )
+	print("health for " .. key .. " "..get_health(player_num))
+	print("multiplier" .. multiplier)
+	print("damage taken "..player_num + 1 .. " ".. damage_taken)
+	print("damage made " .. enemy .. " ".. damage_made)
+	print("Time cornered " .. time_cornered[enemy] /60)
+	print("bonus" .. bonus)
+	return multiplier * math.floor((time_cornered[enemy] / 60) - 2 * damage_taken + 5* damage_made + bonus)
 end
 
 --------------
@@ -489,8 +519,24 @@ function main()
 		curr_special_move["P1"] = 1
 		curr_special_move["P2"] = 3
 	end
+	print(get_pos_x(0))
+	if not is_round_finished() then
+		for i = 1, 2 do
+			if is_cornered(i - 1 ) == 1 then
+				time_cornered[i] = time_cornered[i] + 1
+			end
+		end
+		--TODO NEAT STUFF, consult NN
+	else
+		print("P1 fitness "..  player_fitness(0))
+		print(" ")
+		print(" ")
+		print("P2 fitness "..  player_fitness(1))
+		start_round()
 
-
+		--TODO add genome fitness
+		--TODO MOAR NEAT STUFF
+	end
 
 	player_frame(0)
 	player_frame(1)
@@ -499,7 +545,6 @@ end
 -- Initialize controller
 map_input()
 -- Load savestate
-manager:machine():load("1");
-
+start_round()
 -- main will be called after every frame
 emu.register_frame(main)
