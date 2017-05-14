@@ -677,7 +677,6 @@ end
 
 function evaluate_network(network, inputs, player_num)
 	local key = player_num == 0 and "P1" or "P2"
-	print("Evaluate network player num: " .. player_num)
 	table.insert(inputs, 1)
 	if #inputs ~= Inputs then
 		print("Incorrect number of neural network inputs.")
@@ -946,7 +945,13 @@ function player_fitness(player_num)
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 5 or 0
-
+--[[	print("max health for " .. key .. " "..max_health[player_num +1 ] )
+	print("health for " .. key .. " "..get_health(player_num))
+	print("multiplier" .. multiplier)
+	print("damage taken "..player_num + 1 .. " ".. damage_taken)
+	print("damage made " .. enemy .. " ".. damage_made)
+	print("Time cornered " .. time_cornered[enemy] /60)
+	print("bonus" .. bonus)]]
 	return multiplier * math.floor(2 * (time_cornered[enemy] / 60) - 3 * damage_taken + 5 * damage_made + bonus)
 end
 
@@ -1216,11 +1221,7 @@ function evaluate_current(player_num)
 
 	local inputs = get_inputs(player_num)
 	local cunty = evaluate_network(genome.network, inputs, player_num)
-	print(" ")
-	print("key is " .. key)
-	for kp, p in pairs(cunty) do
-		print(kp .. " : " .. tostring(p))
-	end
+
 	set_input(key)
 end
 
@@ -1243,36 +1244,31 @@ function player_frame(player)
 		return
 	end
 end
+function advance_neural_net(player_num)
+	local species = pool.species[pool.current_species]
+	local genome = species.genomes[pool.current_genome]
+	local p_fitness = player_fitness(player_num)
+	print("Gen " .. pool.generation .. " species " .. pool.current_species.. " genome " .. pool.current_genome
+			.. " fitness: " .. p_fitness)
+	genome.fitness = p_fitness
 
+	if p_fitness > pool.max_fitness then
+		pool.max_fitness = p_fitness
+	end
+
+	next_genome()
+	start_round()
+end
 function main()
+	for i = 0, 1 do -- TODO Change once it works with a single controller
 
-	for i = 0, 0 do -- TODO Change once it works with a single controller
-		local species = pool.species[pool.current_species]
-		local genome = species.genomes[pool.current_genome]
-		if not is_round_finished() then
+		if  (get_timer() > 75 and player_fitness(0) == 0  and player_fitness(1) == 0 ) and not is_round_finished() then
 			evaluate_current(0)
-
-
 			if is_cornered(i) == 1 then
 				time_cornered[i + 1] = time_cornered[i + 1] + 1
 			end
 		else
-			local p_fitness = player_fitness(i)
-			genome.fitness = p_fitness
-
-			if p_fitness > pool.max_fitness then
-				pool.max_fitness = fitness
-
-				while fitness_already_measured() do
-					next_genome()
-				end
-			end
-			--TODO NEAT STUFF, consult NN
-
-			start_round()
-
-			--TODO add genome fitness
-			--TODO MOAR NEAT STUFF
+			advance_neural_net(i)
 		end
 	end
 
