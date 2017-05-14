@@ -515,7 +515,7 @@ function get_inputs(player_num)
 		-- Own inputs
 		(get_pos_x(player_num) - 420) / (990 - 420),
 		(get_pos_y(player_num) - 40) / (120 - 40),
-		get_health(player_num) / (max_health[(player_num + 1) % 2]),
+		get_health(player_num) / (max_health[(player_num + 1) ]),
 		is_cornered(player_num),
 		is_midair(player_num),
 		is_thrown(player_num),
@@ -1223,12 +1223,6 @@ function next_genome()
 	end
 end
 
-function fitness_already_measured()
-	local species = pool.species[pool.current_species]
-	local genome = species.genomes[pool.current_genome]
-
-	return genome.fitness ~= 0
-end
 
 ------------------------------
 --------- END CURRENT GENOME---
@@ -1410,7 +1404,7 @@ function advance_neural_net(player_num)
 	local species = pool.species[pool.current_species]
 	local genome = species.genomes[pool.current_genome]
 	local p_fitness = player_fitness(player_num)
-	print("Gen " .. pool.generation .. " species " .. pool.current_species .. " genome " .. pool.current_genome
+	print("Player: " .. player_num .. " gen " .. pool.generation .. " species " .. pool.current_species .. " genome " .. pool.current_genome
 			.. " fitness: " .. p_fitness)
 	genome.fitness = p_fitness
 
@@ -1425,8 +1419,9 @@ end
 function main()
 
 	pool.current_frame = pool.current_frame + 1
-	for i = 0, 0 do -- TODO Change once it works with a single controller
+	for i = 0, 1 do -- TODO Change once it works with a single controller
 		local key = i == 0 and "P1" or "P2"
+		local enemy = player_num == 0 and 1 or 0
 		if pool.current_frame % 3 == 0 then
 			local species = pool.species[pool.current_species]
 			local genome = species.genomes[pool.current_genome]
@@ -1438,8 +1433,8 @@ function main()
 					clear_input(i)
 					evaluate_current(i)
 				end
-				if is_cornered(1) == 1 then --TODO Change it when both players are being controlled by the net 
-					time_cornered[2] = time_cornered[2] + 1
+				if is_cornered(enemy) == 1 then --TODO Change it when both players are being controlled by the net
+					time_cornered[enemy +1 ] = time_cornered[enemy +1] + 1
 				end
 			else
 
