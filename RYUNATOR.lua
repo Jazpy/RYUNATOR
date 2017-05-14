@@ -294,9 +294,9 @@ function is_cornered(player_num)
 	local pos_player = get_pos_x(player_num)
 	local pos_other = get_pos_x((player_num + 1) % 2)
 
-	if pos_player > 935 and pos_other < pos_player  and get_x_distance() < 20 then
+	if pos_player > 925 and get_forward(player_num) == " Left" then
 		return 1
-	elseif pos_player < 345 and pos_other > pos_player and get_x_distance() < 20 then
+	elseif pos_player < 345 and get_forward(player_num) == " Right" then
 		return 1
 	end
 
@@ -1401,12 +1401,7 @@ function advance_neural_net(player_num)
 end
 
 function main()
-	if get_timer() % 3 == 0 then
-		curr_special_move["P2"] = 3
-	end
-
 	for i = 0, 0 do -- TODO Change once it works with a single controller
-
 		local species = pool.species[pool.current_species]
 		local genome = species.genomes[pool.current_genome]
 		--draw_genome(genome)
