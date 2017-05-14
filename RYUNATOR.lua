@@ -294,9 +294,9 @@ function is_cornered(player_num)
 	local pos_player = get_pos_x(player_num)
 	local pos_other = get_pos_x((player_num + 1) % 2)
 
-	if pos_player > 935 and pos_other < pos_player  and get_x_distance() < 10 then
+	if pos_player > 935 and pos_other < pos_player  and get_x_distance() < 20 then
 		return 1
-	elseif pos_player < 345 and pos_other > pos_player and get_x_distance() < 10 then
+	elseif pos_player < 345 and pos_other > pos_player and get_x_distance() < 20 then
 		return 1
 	end
 
@@ -1410,7 +1410,7 @@ function main()
 		local species = pool.species[pool.current_species]
 		local genome = species.genomes[pool.current_genome]
 		--draw_genome(genome)
-		if (get_timer() > 75 and player_fitness(0) == 0 and player_fitness(1) == 0) and not is_round_finished() then
+		if not is_round_finished() then
 			player_frame(i)
 			evaluate_current(i)
 			if is_cornered(i) == 1 then
