@@ -383,6 +383,7 @@ function start_round()
 	time_cornered[2] = 0
 
 
+	next_genome()
 
 	local species = pool.species[pool.current_species]
 	local genome = species.genomes[pool.current_genome]
@@ -1412,7 +1413,6 @@ function advance_neural_net(player_num)
 		pool.max_fitness = p_fitness
 	end
 
-	next_genome()
 	start_round()
 end
 
