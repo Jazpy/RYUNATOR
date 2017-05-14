@@ -68,7 +68,6 @@ StepSize = 0.1
 DisableMutationChance = 0.4
 EnableMutationChance = 0.2
 
-TimeoutConstant = 20
 
 MaxNodes = 1000000
 -- Used to determine if we need to continue input for a special move accross several frames.
@@ -85,18 +84,18 @@ local curr_special_move = { ["P1"] = 0, ["P2"] = 0 }
 -- CONTROLLER INPUT --
 ----------------------
 local function set_input(key)
---[[	    print("key is ".. key)
-	    for kp,p in pairs(controllers) do
-	        print("Values for table " .. kp)
-	        for k,b in pairs(p) do
-	            print(k .. " : " .. b.state)
-	        end
-	    end]]
+	--[[	    print("key is ".. key)
+			for kp,p in pairs(controllers) do
+				print("Values for table " .. kp)
+				for k,b in pairs(p) do
+					print(k .. " : " .. b.state)
+				end
+			end]]
 	local special_values = {}
 	for name, button in pairs(controllers[key]) do
 		local is_special_move = False
 
-		for idx=0, #special_attacks do
+		for idx = 0, #special_attacks do
 			local is_current_special = (special_attacks[idx] == name) and value == true
 			is_special_move = is_special_move or is_current_special
 		end
@@ -304,17 +303,16 @@ end
 
 function is_cornered(player_num)
 
-    local pos_player = get_pos_x(player_num)
-    local pos_other = get_pos_x((player_num + 1) % 2)
+	local pos_player = get_pos_x(player_num)
+	local pos_other = get_pos_x((player_num + 1) % 2)
 
-    if pos_player > 935 and pos_other < pos_player then
-      return 1
-    elseif pos_player < 345 and pos_other > pos_player then
-      return 1
-    end
+	if pos_player > 935 and pos_other < pos_player then
+		return 1
+	elseif pos_player < 345 and pos_other > pos_player then
+		return 1
+	end
 
-    return 0
-
+	return 0
 end
 
 -- 8 projectile slots, indexed from 0
@@ -335,8 +333,6 @@ end
 ----------------------
 -- HELPER FUNCTIONS --
 ----------------------
-
-
 function num(var)
 	return var and 1 or 0
 end
@@ -514,16 +510,14 @@ end
 function get_inputs(player_num)
 	-- Without keys to ensure their order is always maintained
 	local enemy = player_num == 0 and 1 or 0
-	print("enemy "  .. enemy .. " enemy health " .. get_health(enemy))
-	print(" max health " ..  (max_health[(enemy )]))
-	print("normalized " .. 		get_health(enemy) / (max_health[enemy +1]))
+
 	local input_table = {
 		-- shared inputs
-		(get_x_distance())/(264),
+		(get_x_distance()) / (264),
 
 		-- Own inputs
-		(get_pos_x(player_num) - 420)/(990 - 420),
-		(get_pos_y(player_num)- 40) / (120 - 40),
+		(get_pos_x(player_num) - 420) / (990 - 420),
+		(get_pos_y(player_num) - 40) / (120 - 40),
 		get_health(player_num) / (max_health[(player_num + 1) % 2]),
 		is_cornered(player_num),
 		is_midair(player_num),
@@ -535,8 +529,8 @@ function get_inputs(player_num)
 		get_attack_block(player_num) / 2,
 
 		-- Enemy inputs
-		(get_pos_x(enemy) - 420)/(990 - 420),
-		(get_pos_y(enemy)- 40) / (120 - 40),
+		(get_pos_x(enemy) - 420) / (990 - 420),
+		(get_pos_y(enemy) - 40) / (120 - 40),
 		get_health(enemy) / (max_health[enemy + 1]),
 		is_cornered(enemy),
 		is_midair(enemy),
@@ -549,40 +543,41 @@ function get_inputs(player_num)
 	}
 
 	for i = 0, 7, 1 do
-		table.insert(input_table, ( projectile_pos_x(i)- 420)/(990 - 420))
-		table.insert(input_table, (projectile_pos_y(i)- 40) / (120 - 40))
+		table.insert(input_table, (projectile_pos_x(i) - 420) / (990 - 420))
+		table.insert(input_table, (projectile_pos_y(i) - 40) / (120 - 40))
 	end
 	return input_table
 end
 
 function sigmoid(x)
-	return 2/(1+math.exp(-x))-1
+	return 2 / (1 + math.exp(-x)) - 1
 end
 
 function new_innovation()
 	pool.innovation = pool.innovation + 1
 	return pool.innovation
 end
+
 function new_pool()
 	local pool = {}
 	pool.species = {}
 	pool.generation = 0
 	pool.innovation = Outputs
-	pool.current_species= 1
+	pool.current_species = 1
 	pool.current_genome = 1
 	pool.current_frame = 0
 	pool.curr = 0
-	pool.max_fitness= 0
+	pool.max_fitness = 0
 
 	return pool
 end
 
 function new_species()
 	local species = {}
-	species.top_fitness= 0
+	species.top_fitness = 0
 	species.staleness = 0
 	species.genomes = {}
-	species.average_fitness= 0
+	species.average_fitness = 0
 
 	return species
 end
@@ -596,6 +591,7 @@ function basic_genome()
 
 	return genome
 end
+
 function new_genome()
 	local genome = {}
 	genome.genes = {}
@@ -627,6 +623,7 @@ function copy_gene(gene)
 
 	return gene2
 end
+
 function new_gene()
 	local gene = {}
 	gene.into = 0
@@ -650,18 +647,18 @@ function generate_network(genome)
 	local network = {}
 	network.neurons = {}
 
-	for i=1,Inputs do
+	for i = 1, Inputs do
 		network.neurons[i] = new_neuron()
 	end
 
-	for o=1,Outputs do
-		network.neurons[MaxNodes+o] = new_neuron()
+	for o = 1, Outputs do
+		network.neurons[MaxNodes + o] = new_neuron()
 	end
 
-	table.sort(genome.genes, function (a,b)
+	table.sort(genome.genes, function(a, b)
 		return (a.out < b.out)
 	end)
-	for i=1,#genome.genes do
+	for i = 1, #genome.genes do
 		local gene = genome.genes[i]
 		if gene.enabled then
 			if network.neurons[gene.out] == nil then
@@ -680,20 +677,20 @@ end
 
 function evaluate_network(network, inputs, player_num)
 	local key = player_num == 0 and "P1" or "P2"
-
+	print("Evaluate network player num: " .. player_num)
 	table.insert(inputs, 1)
 	if #inputs ~= Inputs then
 		print("Incorrect number of neural network inputs.")
 		return {}
 	end
 
-	for i=1,Inputs do
+	for i = 1, Inputs do
 		network.neurons[i].value = inputs[i]
 	end
 
-	for _,neuron in pairs(network.neurons) do
+	for _, neuron in pairs(network.neurons) do
 		local sum = 0
-		for j = 1,#neuron.incoming do
+		for j = 1, #neuron.incoming do
 			local incoming = neuron.incoming[j]
 			local other = network.neurons[incoming.into]
 			sum = sum + incoming.weight * other.value
@@ -705,9 +702,9 @@ function evaluate_network(network, inputs, player_num)
 	end
 
 	local outputs = {}
-	for o=1,Outputs do
+	for o = 1, Outputs do
 		local button = key .. output_buttons[o]
-		if network.neurons[MaxNodes+o].value > 0 then
+		if network.neurons[MaxNodes + o].value > 0 then
 			outputs[button] = true
 		else
 			outputs[button] = false
@@ -728,12 +725,12 @@ function crossover(g1, g2)
 	local child = new_genome()
 
 	local innovations2 = {}
-	for i=1,#g2.genes do
+	for i = 1, #g2.genes do
 		local gene = g2.genes[i]
 		innovations2[gene.innovation] = gene
 	end
 
-	for i=1,#g1.genes do
+	for i = 1, #g1.genes do
 		local gene1 = g1.genes[i]
 		local gene2 = innovations2[gene1.innovation]
 		if gene2 ~= nil and math.random(2) == 1 and gene2.enabled then
@@ -743,25 +740,26 @@ function crossover(g1, g2)
 		end
 	end
 
-	child.maxn_euron = math.max(g1.max_neuron,g2.max_neuron)
+	child.maxn_euron = math.max(g1.max_neuron, g2.max_neuron)
 
-	for mutation,rate in pairs(g1.mutation_rates) do
+	for mutation, rate in pairs(g1.mutation_rates) do
 		child.mutation_rates[mutation] = rate
 	end
 
 	return child
 end
+
 function random_neuron(genes, nonInput)
 	local neurons = {}
 	if not nonInput then
-		for i=1,Inputs do
+		for i = 1, Inputs do
 			neurons[i] = true
 		end
 	end
-	for o=1,Outputs do
-		neurons[MaxNodes+o] = true
+	for o = 1, Outputs do
+		neurons[MaxNodes + o] = true
 	end
-	for i=1,#genes do
+	for i = 1, #genes do
 		if (not nonInput) or genes[i].into > Inputs then
 			neurons[genes[i].into] = true
 		end
@@ -771,13 +769,13 @@ function random_neuron(genes, nonInput)
 	end
 
 	local count = 0
-	for _,_ in pairs(neurons) do
+	for _, _ in pairs(neurons) do
 		count = count + 1
 	end
 	local n = math.random(1, count)
 
-	for k,v in pairs(neurons) do
-		n = n-1
+	for k, v in pairs(neurons) do
+		n = n - 1
 		if n == 0 then
 			return k
 		end
@@ -787,7 +785,7 @@ function random_neuron(genes, nonInput)
 end
 
 function contains_link(genes, link)
-	for i=1,#genes do
+	for i = 1, #genes do
 		local gene = genes[i]
 		if gene.into == link.into and gene.out == link.out then
 			return true
@@ -796,18 +794,17 @@ function contains_link(genes, link)
 end
 
 -------------
---Mutations--
+-- Mutations--
 -------------
-
 function point_mutate(genome)
 	local step = genome.mutation_rates["step"]
 
-	for i=1,#genome.genes do
+	for i = 1, #genome.genes do
 		local gene = genome.genes[i]
 		if math.random() < perturb_chance then
-			gene.weight = gene.weight + math.random() * step*2 - step
+			gene.weight = gene.weight + math.random() * step * 2 - step
 		else
-			gene.weight = math.random()*4-2
+			gene.weight = math.random() * 4 - 2
 		end
 	end
 end
@@ -838,7 +835,7 @@ function link_mutate(genome, force_bias)
 		return
 	end
 	newLink.innovation = new_innovation()
-	newLink.weight = math.random()*4-2
+	newLink.weight = math.random() * 4 - 2
 
 	table.insert(genome.genes, newLink)
 end
@@ -850,7 +847,7 @@ function node_mutate(genome)
 
 	genome.max_neuron = genome.max_neuron + 1
 
-	local gene = genome.genes[math.random(1,#genome.genes)]
+	local gene = genome.genes[math.random(1, #genome.genes)]
 	if not gene.enabled then
 		return
 	end
@@ -872,7 +869,7 @@ end
 
 function enable_disable_mutate(genome, enable)
 	local candidates = {}
-	for _,gene in pairs(genome.genes) do
+	for _, gene in pairs(genome.genes) do
 		if gene.enabled == not enable then
 			table.insert(candidates, gene)
 		end
@@ -882,16 +879,16 @@ function enable_disable_mutate(genome, enable)
 		return
 	end
 
-	local gene = candidates[math.random(1,#candidates)]
+	local gene = candidates[math.random(1, #candidates)]
 	gene.enabled = not gene.enabled
 end
 
 function mutate(genome)
-	for mutation,rate in pairs(genome.mutation_rates) do
-		if math.random(1,2) == 1 then
-			genome.mutation_rates[mutation] = 0.95*rate
+	for mutation, rate in pairs(genome.mutation_rates) do
+		if math.random(1, 2) == 1 then
+			genome.mutation_rates[mutation] = 0.95 * rate
 		else
-			genome.mutation_rates[mutation] = 1.05263*rate
+			genome.mutation_rates[mutation] = 1.05263 * rate
 		end
 	end
 
@@ -946,9 +943,9 @@ function player_fitness(player_num)
 
 	local multiplier = math.ceil((get_timer() + 1) / 20)
 
-	local damage_taken = max_health[player_num +1] - get_health(player_num)
-	local damage_made = max_health[enemy] - get_health(enemy - 1 )
-	local bonus = get_round_winner() == player_num + 1 and get_timer()*5 or 0
+	local damage_taken = max_health[player_num + 1] - get_health(player_num)
+	local damage_made = max_health[enemy] - get_health(enemy - 1)
+	local bonus = get_round_winner() == player_num + 1 and get_timer() * 5 or 0
 
 	return multiplier * math.floor(2 * (time_cornered[enemy] / 60) - 3 * damage_taken + 5 * damage_made + bonus)
 end
@@ -957,29 +954,29 @@ end
 
 function disjoint(genes1, genes2)
 	local i1 = {}
-	for i = 1,#genes1 do
+	for i = 1, #genes1 do
 		local gene = genes1[i]
 		i1[gene.innovation] = true
 	end
 
 	local i2 = {}
-	for i = 1,#genes2 do
+	for i = 1, #genes2 do
 		local gene = genes2[i]
 		i2[gene.innovation] = true
 	end
 
 	local disjointGenes = 0
-	for i = 1,#genes1 do
+	for i = 1, #genes1 do
 		local gene = genes1[i]
 		if not i2[gene.innovation] then
-			disjointGenes = disjointGenes+1
+			disjointGenes = disjointGenes + 1
 		end
 	end
 
-	for i = 1,#genes2 do
+	for i = 1, #genes2 do
 		local gene = genes2[i]
 		if not i1[gene.innovation] then
-			disjointGenes = disjointGenes+1
+			disjointGenes = disjointGenes + 1
 		end
 	end
 
@@ -990,14 +987,14 @@ end
 
 function weights(genes1, genes2)
 	local i2 = {}
-	for i = 1,#genes2 do
+	for i = 1, #genes2 do
 		local gene = genes2[i]
 		i2[gene.innovation] = gene
 	end
 
 	local sum = 0
 	local coincident = 0
-	for i = 1,#genes1 do
+	for i = 1, #genes1 do
 		local gene = genes1[i]
 		if i2[gene.innovation] ~= nil then
 			local gene2 = i2[gene.innovation]
@@ -1010,54 +1007,53 @@ function weights(genes1, genes2)
 end
 
 function same_species(genome1, genome2)
-	local dd = DeltaDisjoint*disjoint(genome1.genes, genome2.genes)
-	local dw = DeltaWeights*weights(genome1.genes, genome2.genes)
+	local dd = DeltaDisjoint * disjoint(genome1.genes, genome2.genes)
+	local dw = DeltaWeights * weights(genome1.genes, genome2.genes)
 	return dd + dw < DeltaThreshold
 end
 
 ----------------
---END MUTATION--
+-- END MUTATION--
 ----------------
-
 function rank_globally()
 	local global = {}
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
-		for g = 1,#species.genomes do
+		for g = 1, #species.genomes do
 			table.insert(global, species.genomes[g])
 		end
 	end
-	table.sort(global, function (a,b)
+	table.sort(global, function(a, b)
 		return (a.fitness < b.fitness)
 	end)
 
-	for g=1,#global do
-		global[g].global_rank= g
+	for g = 1, #global do
+		global[g].global_rank = g
 	end
 end
 
 function total_average_fitness()
 	local total = 0
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 		total = total + species.average_fitness
 	end
 
 	return total
 end
---------------------------
---EVOLUTION AND BREEDING--
---------------------------
 
+--------------------------
+-- EVOLUTION AND BREEDING--
+--------------------------
 function cull_species(cut_to_one)
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 
-		table.sort(species.genomes, function (a,b)
+		table.sort(species.genomes, function(a, b)
 			return (a.fitness > b.fitness)
 		end)
 
-		local remaining = math.ceil(#species.genomes/2)
+		local remaining = math.ceil(#species.genomes / 2)
 		if cut_to_one then
 			remaining = 1
 		end
@@ -1086,10 +1082,10 @@ end
 function remove_stale_species()
 	local survived = {}
 
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 
-		table.sort(species.genomes, function (a,b)
+		table.sort(species.genomes, function(a, b)
 			return (a.fitness > b.fitness)
 		end)
 
@@ -1106,11 +1102,12 @@ function remove_stale_species()
 
 	pool.species = survived
 end
+
 function remove_weak_species()
 	local survived = {}
 
 	local sum = total_average_fitness()
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 		local breed = math.floor(species.average_fitness / sum * Population)
 		if breed >= 1 then
@@ -1124,7 +1121,7 @@ end
 
 function add_to_species(child)
 	local found_species = false
-	for s=1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 		if not found_species and same_species(child, species.genomes[1]) then
 			table.insert(species.genomes, child)
@@ -1144,17 +1141,17 @@ function new_generation()
 	rank_globally()
 	remove_stale_species()
 	rank_globally()
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
 	end
 	remove_weak_species()
 	local sum = total_average_fitness()
 	local children = {}
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 		local breed = math.floor(species.averageFitness / sum * Population) - 1
-		for i=1,breed do
+		for i = 1, breed do
 			table.insert(children, breedChild(species))
 		end
 	end
@@ -1163,7 +1160,7 @@ function new_generation()
 		local species = pool.species[math.random(1, #pool.species)]
 		table.insert(children, breedChild(species))
 	end
-	for c=1,#children do
+	for c = 1, #children do
 		local child = children[c]
 		addToSpecies(child)
 	end
@@ -1174,28 +1171,26 @@ function new_generation()
 end
 
 ------------------------------
---END EVOLUTION AND BREEDING--
+-- END EVOLUTION AND BREEDING--
 ------------------------------
 
 ------------------------------
----------CURRENT GENOME-------
+--------- CURRENT GENOME-------
 ------------------------------
 function initialize_pool()
 	pool = new_pool()
 
-	for i=1,Population do
+	for i = 1, Population do
 		local basic = basic_genome()
 		add_to_species(basic)
 	end
-
-
 end
 
 function next_genome()
 	pool.current_genome = pool.current_genome + 1
 	if pool.current_genome > #pool.species[pool.current_species].genomes then
 		pool.current_genome = 1
-		pool.current_species = pool.current_species+1
+		pool.current_species = pool.current_species + 1
 		if pool.current_species > #pool.species then
 			new_generation()
 			pool.current_species = 1
@@ -1209,24 +1204,26 @@ function fitness_already_measured()
 
 	return genome.fitness ~= 0
 end
+
 ------------------------------
----------END CURRENT GENOME---
+--------- END CURRENT GENOME---
 ------------------------------
 function evaluate_current(player_num)
-	local key = player_num== 0 and "P1" or "P2"
+	local key = player_num == 0 and "P1" or "P2"
 
 	local species = pool.species[pool.current_species]
 	local genome = species.genomes[pool.current_genome]
 
 	local inputs = get_inputs(player_num)
-	local cunty  = evaluate_network(genome.network, inputs)
+	local cunty = evaluate_network(genome.network, inputs, player_num)
 	print(" ")
-	print("key is ".. key)
-	for kp,p in pairs(cunty) do
+	print("key is " .. key)
+	for kp, p in pairs(cunty) do
 		print(kp .. " : " .. tostring(p))
 	end
 	set_input(key)
 end
+
 --------------
 -- END NEAT --
 --------------
@@ -1248,28 +1245,39 @@ function player_frame(player)
 end
 
 function main()
-	if not is_round_finished() then
-		evaluate_current(0)
-		for i = 0, 1 do
-			if is_cornered(i) == 1 then
-				time_cornered[i + 1] = time_cornered[i+1] + 1
-			end
-		end
-		--TODO NEAT STUFF, consult NN
-	else
-		print("P1 fitness "..  player_fitness(0))
-		print(" ")
-		print(" ")
-		print("P2 fitness "..  player_fitness(1))
-		start_round()
 
-		--TODO add genome fitness
-		--TODO MOAR NEAT STUFF
+	for i = 0, 0 do -- TODO Change once it works with a single controller
+		local species = pool.species[pool.current_species]
+		local genome = species.genomes[pool.current_genome]
+		if not is_round_finished() then
+			evaluate_current(0)
+
+
+			if is_cornered(i) == 1 then
+				time_cornered[i + 1] = time_cornered[i + 1] + 1
+			end
+		else
+			local p_fitness = player_fitness(i)
+			genome.fitness = p_fitness
+
+			if p_fitness > pool.max_fitness then
+				pool.max_fitness = fitness
+
+				while fitness_already_measured() do
+					next_genome()
+				end
+			end
+			--TODO NEAT STUFF, consult NN
+
+			start_round()
+
+			--TODO add genome fitness
+			--TODO MOAR NEAT STUFF
+		end
 	end
 
 	player_frame(0)
 	player_frame(1)
-
 end
 
 
