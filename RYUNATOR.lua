@@ -47,8 +47,9 @@ local output_buttons = {
 	" special 3",
 }
 
+local gui = manager:machine().screens[":screen"]
 
-
+gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
 Population = 300
@@ -84,28 +85,15 @@ local curr_special_move = { ["P1"] = 0, ["P2"] = 0 }
 -- CONTROLLER INPUT --
 ----------------------
 local function set_input(key)
-	--[[	    print("key is ".. key)
-			for kp,p in pairs(controllers) do
-				print("Values for table " .. kp)
-				for k,b in pairs(p) do
-					print(k .. " : " .. b.state)
-				end
-			end]]
-	local special_values = {}
+	--    print("key is ".. key)
+	--    for kp,p in pairs(controllers) do
+	--        print("Values for table " .. kp)
+	--        for k,b in pairs(p) do
+	--            print(k .. " : " .. b.state)
+	--        end
+	--    end
 	for name, button in pairs(controllers[key]) do
-		local is_special_move = False
-
-		for idx = 0, #special_attacks do
-			local is_current_special = (special_attacks[idx] == name) and value == true
-			is_special_move = is_special_move or is_current_special
-		end
-
-		if is_special_move then
-			local special_move = string.match(k, "%d+")
-			curr_special_move[key] = special_move
-		else
-			button.field:set_value(button.state)
-		end
+		button.field:set_value(button.state)
 	end
 end
 
@@ -333,6 +321,16 @@ end
 ----------------------
 -- HELPER FUNCTIONS --
 ----------------------
+
+local function array_has_value(tab, val)
+	for index, value in ipairs(tab) do
+		if value == val then
+			return true
+		end
+	end
+
+	return false
+end
 function num(var)
 	return var and 1 or 0
 end
@@ -389,7 +387,6 @@ function start_round()
 	local species = pool.species[pool.current_species]
 	local genome = species.genomes[pool.current_genome]
 	generate_network(genome)
-	evaluate_current(0)
 end
 
 --------------------------
@@ -412,6 +409,7 @@ function neutral_jump(controller_to_update)
 end
 
 function quarter_circle_forward(controller_to_update, punch_type)
+	print("Shit boi")
 	local key = controller_to_update == 0 and "P1" or "P2"
 	local forward = get_forward(controller_to_update)
 	local attack = punches[punch_type]
@@ -945,13 +943,13 @@ function player_fitness(player_num)
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 5 or 0
---[[	print("max health for " .. key .. " "..max_health[player_num +1 ] )
-	print("health for " .. key .. " "..get_health(player_num))
-	print("multiplier" .. multiplier)
-	print("damage taken "..player_num + 1 .. " ".. damage_taken)
-	print("damage made " .. enemy .. " ".. damage_made)
-	print("Time cornered " .. time_cornered[enemy] /60)
-	print("bonus" .. bonus)]]
+	--[[	print("max health for " .. key .. " "..max_health[player_num +1 ] )
+		print("health for " .. key .. " "..get_health(player_num))
+		print("multiplier" .. multiplier)
+		print("damage taken "..player_num + 1 .. " ".. damage_taken)
+		print("damage made " .. enemy .. " ".. damage_made)
+		print("Time cornered " .. time_cornered[enemy] /60)
+		print("bonus" .. bonus)]]
 	return multiplier * math.floor(2 * (time_cornered[enemy] / 60) - 3 * damage_taken + 5 * damage_made + bonus)
 end
 
@@ -1220,11 +1218,153 @@ function evaluate_current(player_num)
 	local genome = species.genomes[pool.current_genome]
 
 	local inputs = get_inputs(player_num)
-	local cunty = evaluate_network(genome.network, inputs, player_num)
+	--	controllers[key]
+	local net_response = evaluate_network(genome.network, inputs, player_num)
 
+--	print(" ")
+	for button_name, button_value in pairs(net_response) do
+		local is_special_move = False
+		local bv = num(button_value)
+
+		if array_has_value(special_attacks, string.sub(button_name, 3)) then
+			local special_move = string.match(button_name, "%d+")
+			if bv == 1 then
+				--print("Activating special move #".. special_move)
+				curr_special_move[key] = special_move
+			end
+		else
+--			print("Setting " .. button_name .. " as " .. bv)
+			controllers[key][button_name].state = bv
+		end
+	end
+	clear_input(key)
 	set_input(key)
 end
 
+--------------
+--- GUI ------
+--------------
+function draw_genome(genome, player_num)
+	local network = genome.network
+	local cells = {}
+	local i = 1
+	local cell = {}
+	for dy = -gui_element, gui_element do
+		for dx = -gui_element, gui_element do
+			cell = {}
+			cell.x = 50 + 5 * dx
+			cell.y = 70 + 5 * dy
+			cell.value = network.neurons[i].value
+			cells[i] = cell
+			i = i + 1
+		end
+	end
+	local biasCell = {}
+	biasCell.x = 80
+	biasCell.y = 110
+	biasCell.value = network.neurons[Inputs].value
+	cells[Inputs] = biasCell
+
+	for o = 1, Outputs do
+		cell = {}
+		cell.x = 220
+		cell.y = 30 + 8 * o
+		cell.value = network.neurons[MaxNodes + o].value
+		cells[MaxNodes + o] = cell
+		local color
+		if cell.value > 0 then
+			color = 0xFF0000FF
+		else
+			color = 0xFF000000
+		end
+		gui:draw_text(223, 24 + 8 * o, output_buttons[o])
+	end
+
+	for n, neuron in pairs(network.neurons) do
+		cell = {}
+		if n > Inputs and n <= MaxNodes then
+			cell.x = 140
+			cell.y = 40
+			cell.value = neuron.value
+			cells[n] = cell
+		end
+	end
+
+	for n = 1, 4 do
+		for _, gene in pairs(genome.genes) do
+			if gene.enabled then
+				local c1 = cells[gene.into]
+				local c2 = cells[gene.out]
+				if gene.into > Inputs and gene.into <= MaxNodes then
+					c1.x = 0.75 * c1.x + 0.25 * c2.x
+					if c1.x >= c2.x then
+						c1.x = c1.x - 40
+					end
+					if c1.x < 90 then
+						c1.x = 90
+					end
+
+					if c1.x > 220 then
+						c1.x = 220
+					end
+					c1.y = 0.75 * c1.y + 0.25 * c2.y
+				end
+				if gene.out > Inputs and gene.out <= MaxNodes then
+					c2.x = 0.25 * c1.x + 0.75 * c2.x
+					if c1.x >= c2.x then
+						c2.x = c2.x + 40
+					end
+					if c2.x < 90 then
+						c2.x = 90
+					end
+					if c2.x > 220 then
+						c2.x = 220
+					end
+					c2.y = 0.25 * c1.y + 0.75 * c2.y
+				end
+			end
+		end
+	end
+
+	gui.drawBox(50 - gui_element * 5 - 3, 70 - gui_element * 5 - 3, 50 + gui_element * 5 + 2, 70 + gui_element * 5 + 2, 0xFF000000, 0x80808080)
+	for n, cell in pairs(cells) do
+		if n > Inputs or cell.value ~= 0 then
+			local color = math.floor((cell.value + 1) / 2 * 256)
+			if color > 255 then color = 255 end
+			if color < 0 then color = 0 end
+			local opacity = 0xFF000000
+			if cell.value == 0 then
+				opacity = 0x50000000
+			end
+			color = opacity + color * 0x10000 + color * 0x100 + color
+			gui.drawBox(cell.x - 2, cell.y - 2, cell.x + 2, cell.y + 2, opacity, color)
+		end
+	end
+	for _, gene in pairs(genome.genes) do
+		if gene.enabled then
+			local c1 = cells[gene.into]
+			local c2 = cells[gene.out]
+			local opacity = 0xA0000000
+			if c1.value == 0 then
+				opacity = 0x20000000
+			end
+
+			local color = 0x80 - math.floor(math.abs(sigmoid(gene.weight)) * 0x80)
+			if gene.weight > 0 then
+				color = opacity + 0x8000 + 0x10000 * color
+			else
+				color = opacity + 0x800000 + 0x100 * color
+			end
+			gui:draw_line(c1.x + 1, c1.y, c2.x - 3, c2.y, color)
+		end
+	end
+
+	gui:draw_bow(49, 71, 51, 78, 0x00000000, 0x80FF0000)
+end
+
+--------------
+--- END GUI --
+--------------
 --------------
 -- END NEAT --
 --------------
@@ -1244,11 +1384,12 @@ function player_frame(player)
 		return
 	end
 end
+
 function advance_neural_net(player_num)
 	local species = pool.species[pool.current_species]
 	local genome = species.genomes[pool.current_genome]
 	local p_fitness = player_fitness(player_num)
-	print("Gen " .. pool.generation .. " species " .. pool.current_species.. " genome " .. pool.current_genome
+	print("Gen " .. pool.generation .. " species " .. pool.current_species .. " genome " .. pool.current_genome
 			.. " fitness: " .. p_fitness)
 	genome.fitness = p_fitness
 
@@ -1259,11 +1400,20 @@ function advance_neural_net(player_num)
 	next_genome()
 	start_round()
 end
-function main()
-	for i = 0, 1 do -- TODO Change once it works with a single controller
 
-		if  (get_timer() > 75 and player_fitness(0) == 0  and player_fitness(1) == 0 ) and not is_round_finished() then
-			evaluate_current(0)
+function main()
+	if get_timer() % 3 == 0 then
+		curr_special_move["P2"] = 3
+	end
+
+	for i = 0, 0 do -- TODO Change once it works with a single controller
+
+		local species = pool.species[pool.current_species]
+		local genome = species.genomes[pool.current_genome]
+		--draw_genome(genome)
+		if (get_timer() > 75 and player_fitness(0) == 0 and player_fitness(1) == 0) and not is_round_finished() then
+			player_frame(i)
+			evaluate_current(i)
 			if is_cornered(i) == 1 then
 				time_cornered[i + 1] = time_cornered[i + 1] + 1
 			end
@@ -1271,9 +1421,6 @@ function main()
 			advance_neural_net(i)
 		end
 	end
-
-	player_frame(0)
-	player_frame(1)
 end
 
 
