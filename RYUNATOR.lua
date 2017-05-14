@@ -52,7 +52,7 @@ local gui = manager:machine().screens[":screen"]
 gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
-Population = 300
+Population = 100
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -321,7 +321,6 @@ end
 ----------------------
 -- HELPER FUNCTIONS --
 ----------------------
-
 local function array_has_value(tab, val)
 	for index, value in ipairs(tab) do
 		if value == val then
@@ -331,6 +330,7 @@ local function array_has_value(tab, val)
 
 	return false
 end
+
 function num(var)
 	return var and 1 or 0
 end
@@ -713,7 +713,7 @@ end
 function crossover(g1, g2)
 	-- Make sure g1 is the higher fitness genome
 	if g2.fitness > g1.fitness then
-		tempg = g1
+		local tempg = g1
 		g1 = g2
 		g2 = tempg
 	end
@@ -797,7 +797,7 @@ function point_mutate(genome)
 
 	for i = 1, #genome.genes do
 		local gene = genome.genes[i]
-		if math.random() < perturb_chance then
+		if math.random() < PerturbChance then
 			gene.weight = gene.weight + math.random() * step * 2 - step
 		else
 			gene.weight = math.random() * 4 - 2
@@ -932,7 +932,16 @@ function mutate(genome)
 		p = p - 1
 	end
 end
+function calculate_average_fitness(species)
+	local total = 0
 
+	for g=1,#species.genomes do
+		local genome = species.genomes[g]
+		total = total + genome.global_rank
+	end
+
+	species.average_fitness = total / #species.genomes
+end
 function player_fitness(player_num)
 	local enemy = player_num == 0 and 2 or 1
 	local key = player_num == 0 and "P1" or "P2"
@@ -942,14 +951,14 @@ function player_fitness(player_num)
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 5 or 0
-	--[[	print("max health for " .. key .. " "..max_health[player_num +1 ] )
-		print("health for " .. key .. " "..get_health(player_num))
-		print("multiplier" .. multiplier)
-		print("damage taken "..player_num + 1 .. " ".. damage_taken)
-		print("damage made " .. enemy .. " ".. damage_made)
-		print("Time cornered " .. time_cornered[enemy] /60)
+	--[[		print("max health for " .. key .. " "..max_health[player_num +1 ] )
+			print("health for " .. key .. " "..get_health(player_num))
+			print("multiplier" .. multiplier)
+			print("damage taken "..player_num + 1 .. " ".. damage_taken)
+			print("damage made " .. enemy .. " ".. damage_made)
+			print("Time cornered " .. enemy .. " ".. time_cornered[enemy] /60)
 		print("bonus" .. bonus)]]
-	return multiplier * math.floor(2 * (time_cornered[enemy] / 60) - 3 * damage_taken + 5 * damage_made + bonus)
+	return 10 + multiplier * math.floor(2 * (time_cornered[enemy] / 60) - 3 * damage_taken + 5 * damage_made + bonus)
 end
 
 
@@ -1064,7 +1073,21 @@ function cull_species(cut_to_one)
 		end
 	end
 end
+function copy_genome(genome)
+	local genome2 = new_genome()
+	for g=1,#genome.genes do
+		table.insert(genome2.genes, copy_gene(genome.genes[g]))
+	end
+	genome2.max_neuron = genome.max_neuron
+	genome2.mutation_rates["connections"] = genome.mutation_rates["connections"]
+	genome2.mutation_rates["link"] = genome.mutation_rates["link"]
+	genome2.mutation_rates["bias"] = genome.mutation_rates["bias"]
+	genome2.mutation_rates["node"] = genome.mutation_rates["node"]
+	genome2.mutation_rates["enable"] = genome.mutation_rates["enable"]
+	genome2.mutation_rates["disable"] = genome.mutation_rates["disable"]
 
+	return genome2
+end
 function breed_child(species)
 	local child = {}
 	if math.random() < CrossoverChance then
@@ -1073,7 +1096,7 @@ function breed_child(species)
 		child = crossover(g1, g2)
 	else
 		local g = species.genomes[math.random(1, #species.genomes)]
-		child = copyGenome(g)
+		child = copy_genome(g)
 	end
 
 	mutate(child)
@@ -1091,7 +1114,7 @@ function remove_stale_species()
 			return (a.fitness > b.fitness)
 		end)
 
-		if species.genomes[1].fitness > species.topFitness then
+		if species.genomes[1].fitness > species.top_fitness then
 			species.top_fitness = species.genomes[1].fitness
 			species.staleness = 0
 		else
@@ -1145,26 +1168,26 @@ function new_generation()
 	rank_globally()
 	for s = 1, #pool.species do
 		local species = pool.species[s]
-		calculateAverageFitness(species)
+		calculate_average_fitness(species)
 	end
 	remove_weak_species()
 	local sum = total_average_fitness()
 	local children = {}
 	for s = 1, #pool.species do
 		local species = pool.species[s]
-		local breed = math.floor(species.averageFitness / sum * Population) - 1
+		local breed = math.floor(species.average_fitness / sum * Population) - 1
 		for i = 1, breed do
-			table.insert(children, breedChild(species))
+			table.insert(children, breed_child(species))
 		end
 	end
 	cull_species(true) -- Cull all but the top member of each species
 	while #children + #pool.species < Population do
 		local species = pool.species[math.random(1, #pool.species)]
-		table.insert(children, breedChild(species))
+		table.insert(children, breed_child(species))
 	end
 	for c = 1, #children do
 		local child = children[c]
-		addToSpecies(child)
+		add_to_species(child)
 	end
 
 	pool.generation = pool.generation + 1
@@ -1220,23 +1243,22 @@ function evaluate_current(player_num)
 	--	controllers[key]
 	local net_response = evaluate_network(genome.network, inputs, player_num)
 
---	print(" ")
+	--print(" ")
 	for button_name, button_value in pairs(net_response) do
-		local is_special_move = False
 		local bv = num(button_value)
 
 		if array_has_value(special_attacks, string.sub(button_name, 3)) then
 			local special_move = string.match(button_name, "%d+")
 			if bv == 1 then
-				--print("Activating special move #".. special_move)
-				curr_special_move[key] = special_move
+				curr_special_move[key] = tonumber(special_move)
+				player_frame(player_num)
 			end
 		else
---			print("Setting " .. button_name .. " as " .. bv)
+			--print("Setting " .. button_name .. " as " .. bv)
 			controllers[key][button_name].state = bv
 		end
 	end
-	clear_input(key)
+
 	set_input(key)
 end
 
@@ -1401,18 +1423,29 @@ function advance_neural_net(player_num)
 end
 
 function main()
+
+	pool.current_frame = pool.current_frame + 1
 	for i = 0, 0 do -- TODO Change once it works with a single controller
-		local species = pool.species[pool.current_species]
-		local genome = species.genomes[pool.current_genome]
-		--draw_genome(genome)
-		if not is_round_finished() then
-			player_frame(i)
-			evaluate_current(i)
-			if is_cornered(i) == 1 then
-				time_cornered[i + 1] = time_cornered[i + 1] + 1
+		local key = i == 0 and "P1" or "P2"
+		if pool.current_frame % 3 == 0 then
+			local species = pool.species[pool.current_species]
+			local genome = species.genomes[pool.current_genome]
+			--draw_genome(genome)
+			if not is_round_finished() then
+				if curr_special_move[key] ~= 0 then
+					player_frame(i)
+				else
+					clear_input(i)
+					evaluate_current(i)
+				end
+				if is_cornered(1) == 1 then --TODO Change it when both players are being controlled by the net 
+					time_cornered[2] = time_cornered[2] + 1
+				end
+			else
+
+				advance_neural_net(i)
 			end
 		else
-			advance_neural_net(i)
 		end
 	end
 end
