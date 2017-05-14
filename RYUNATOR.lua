@@ -294,9 +294,9 @@ function is_cornered(player_num)
 	local pos_player = get_pos_x(player_num)
 	local pos_other = get_pos_x((player_num + 1) % 2)
 
-	if pos_player > 935 and pos_other < pos_player then
+	if pos_player > 935 and pos_other < pos_player  and get_x_distance() < 10 then
 		return 1
-	elseif pos_player < 345 and pos_other > pos_player then
+	elseif pos_player < 345 and pos_other > pos_player and get_x_distance() < 10 then
 		return 1
 	end
 
@@ -409,7 +409,6 @@ function neutral_jump(controller_to_update)
 end
 
 function quarter_circle_forward(controller_to_update, punch_type)
-	print("Shit boi")
 	local key = controller_to_update == 0 and "P1" or "P2"
 	local forward = get_forward(controller_to_update)
 	local attack = punches[punch_type]
