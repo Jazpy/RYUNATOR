@@ -958,20 +958,20 @@ function player_fitness(player_num)
 
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
-	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50 or 0
---[[		print(" ")
-		print(key)
-		print("Time midair in seconds " .. time_air[player_num +1 ] /60)
-		print("Blocked for " .. time_blocking[player_num +1] .. " frames " )
-		print("max health for " .. key .. " " .. max_health[player_num + 1])
-		print("health for " .. key .. " " .. get_health(player_num))
-		print("multiplier" .. multiplier)
-		print("damage taken " .. player_num + 1 .. " " .. damage_taken)
-		print("damage made " .. enemy .. " " .. damage_made)
-		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
-		print("bonus" .. bonus)]]
-	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus ) - 4 * damage_taken
-			+ time_blocking[player_num + 1] / 4 + time_air[player_num + 1] /60)
+	local health_difference = damage_taken - damage_made
+	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50  or 0
+--[[	print(" ")
+	print(key)
+	print("Time midair in seconds " .. time_air[player_num + 1] / 60)
+	print("Blocked for " .. time_blocking[player_num + 1] .. " frames ")
+	print("health for " .. key .. " " .. get_health(player_num))
+	print("multiplier" .. multiplier)
+	print("damage taken " .. player_num + 1 .. " " .. damage_taken)
+	print("damage made " .. enemy .. " " .. damage_made)
+	print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
+	print("bonus" .. bonus)]]
+	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - (4 * damage_taken)
+			+ time_blocking[player_num + 1] / 4 + time_air[player_num + 1] / 60)
 end
 
 
@@ -1449,7 +1449,7 @@ function main()
 			end
 		end
 		if is_midair(i) == 1 then
-			time_air[i+1] = time_air[i+1] +1
+			time_air[i + 1] = time_air[i + 1] + 1
 		end
 		if get_blocking(i) ~= 0 then
 			time_blocking[i + 1] = time_blocking[i + 1] + 1
