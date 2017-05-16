@@ -677,7 +677,7 @@ function generate_network(genome)
 end
 
 function evaluate_network(network, inputs, player_num)
-	local key = player_num == 0 and "P1" or "P2"
+	local key = player_num == 1 and "P1" or "P2"
 	table.insert(inputs, 1)
 	if #inputs ~= Inputs then
 		print("Incorrect number of neural network inputs.")
@@ -703,6 +703,8 @@ function evaluate_network(network, inputs, player_num)
 
 	local outputs = {}
 	for o = 1, Outputs do
+		print(key .. output_buttons[o])
+
 		local button = key .. output_buttons[o]
 		if network.neurons[MaxNodes + o].value > 0 then
 			outputs[button] = true
@@ -1249,6 +1251,7 @@ function evaluate_current(player_num)
 
 	--print(" ")
 	for button_name, button_value in pairs(net_response) do
+--		print("Is " .. button_name .. " part of " .. key )
 		if string.match(button_name, key) then
 			local bv = num(button_value)
 			if array_has_value(special_attacks, string.sub(button_name, 3)) then
@@ -1258,7 +1261,7 @@ function evaluate_current(player_num)
 					player_frame(player_num)
 				end
 			else
-				--			print("In controller " .. key .." setting " .. button_name .. " as " .. bv)
+--							print("In controller " .. key .." setting " .. button_name .. " as " .. bv)
 				controllers[key][button_name].state = bv
 			end
 		end
@@ -1427,7 +1430,7 @@ end
 function main()
 	for i = 0, 1 do
 		local pool_num = i + 1
-		pool[pool_num].current_frame = tonumber(pool[pool_num].current_frame) + 1
+		pool[pool_num].current_frame = pool[pool_num].current_frame + 1
 		local key = i == 0 and "P1" or "P2"
 		local enemy = player_num == 0 and 1 or 0
 		if pool[pool_num].current_frame % 3 == 0 then
