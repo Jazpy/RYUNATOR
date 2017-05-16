@@ -955,7 +955,7 @@ function player_fitness(player_num)
 
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
-	local bonus = get_round_winner() == player_num + 1 and get_timer() * 5 or 0
+	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50 or 0
 	--[[	print(" ")
 		print(key)
 		print("max health for " .. key .. " " .. max_health[player_num + 1])
@@ -965,7 +965,7 @@ function player_fitness(player_num)
 		print("damage made " .. enemy .. " " .. damage_made)
 		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
-	return 10 + multiplier * math.floor(2 * (time_cornered[enemy] / 60) - 3 * damage_taken + 5 * damage_made + bonus)
+	return multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - 4 * damage_taken
 end
 
 
@@ -1129,7 +1129,7 @@ function remove_stale_species(net_num)
 		else
 			species.staleness = species.staleness + 1
 		end
-		if species.staleness < StaleSpecies or species.topFitness >= pool[net_num].maxFitness then
+		if species.staleness < StaleSpecies or species.top_fitness >= pool[net_num].max_fitness then
 			table.insert(survived, species)
 		end
 	end
