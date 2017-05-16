@@ -703,8 +703,6 @@ function evaluate_network(network, inputs, player_num)
 
 	local outputs = {}
 	for o = 1, Outputs do
-		print(key .. output_buttons[o])
-
 		local button = key .. output_buttons[o]
 		if network.neurons[MaxNodes + o].value > 0 then
 			outputs[button] = true
