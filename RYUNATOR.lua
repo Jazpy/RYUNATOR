@@ -52,7 +52,7 @@ local gui = manager:machine().screens[":screen"]
 gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
-Population = 3
+Population = 150
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -1446,6 +1446,7 @@ function main()
 		end
 	end
 	if is_round_finished() then
+		print(" ")
 		for i = 0, 1 do
 			advance_neural_net(i)
 		end
