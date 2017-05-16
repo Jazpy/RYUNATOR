@@ -383,11 +383,13 @@ function start_round()
 	time_cornered[2] = 0
 
 
-	next_genome()
 
-	local species = pool.species[pool.current_species]
-	local genome = species.genomes[pool.current_genome]
-	generate_network(genome)
+	for i = 1, 2 do
+		next_genome(i)
+		local species = pool[i].species[pool[i].current_species]
+		local genome = species.genomes[pool[i].current_genome]
+		generate_network(genome)
+	end
 end
 
 --------------------------
@@ -509,6 +511,7 @@ function get_inputs(player_num)
 	-- Without keys to ensure their order is always maintained
 	local enemy = player_num == 0 and 1 or 0
 
+
 	local input_table = {
 		-- shared inputs
 		(get_x_distance()) / (264),
@@ -516,7 +519,7 @@ function get_inputs(player_num)
 		-- Own inputs
 		(get_pos_x(player_num) - 420) / (990 - 420),
 		(get_pos_y(player_num) - 40) / (120 - 40),
-		get_health(player_num) / (max_health[(player_num + 1) ]),
+		get_health(player_num) / (max_health[(player_num + 1)]),
 		is_cornered(player_num),
 		is_midair(player_num),
 		is_thrown(player_num),
@@ -551,9 +554,9 @@ function sigmoid(x)
 	return 2 / (1 + math.exp(-x)) - 1
 end
 
-function new_innovation()
-	pool.innovation = pool.innovation + 1
-	return pool.innovation
+function new_innovation(net_num)
+	pool[net_num].innovation = pool[net_num].innovation + 1
+	return pool[net_num].innovation
 end
 
 function new_pool()
@@ -580,12 +583,12 @@ function new_species()
 	return species
 end
 
-function basic_genome()
+function basic_genome(pool_num)
 	local genome = new_genome()
 	local innovation = 1
 
 	genome.max_neuron = Inputs
-	mutate(genome)
+	mutate(genome, pool_num)
 
 	return genome
 end
@@ -806,7 +809,7 @@ function point_mutate(genome)
 	end
 end
 
-function link_mutate(genome, force_bias)
+function link_mutate(genome, force_bias, net_num)
 	local neuron1 = random_neuron(genome.genes, false)
 	local neuron2 = random_neuron(genome.genes, true)
 
@@ -831,13 +834,13 @@ function link_mutate(genome, force_bias)
 	if contains_link(genome.genes, newLink) then
 		return
 	end
-	newLink.innovation = new_innovation()
+	newLink.innovation = new_innovation(net_num)
 	newLink.weight = math.random() * 4 - 2
 
 	table.insert(genome.genes, newLink)
 end
 
-function node_mutate(genome)
+function node_mutate(genome, net_num)
 	if #genome.genes == 0 then
 		return
 	end
@@ -853,13 +856,13 @@ function node_mutate(genome)
 	local gene1 = copy_gene(gene)
 	gene1.out = genome.max_neuron
 	gene1.weight = 1.0
-	gene1.innovation = new_innovation()
+	gene1.innovation = new_innovation(net_num)
 	gene1.enabled = true
 	table.insert(genome.genes, gene1)
 
 	local gene2 = copy_gene(gene)
 	gene2.into = genome.max_neuron
-	gene2.innovation = new_innovation()
+	gene2.innovation = new_innovation(net_num)
 	gene2.enabled = true
 	table.insert(genome.genes, gene2)
 end
@@ -880,7 +883,7 @@ function enable_disable_mutate(genome, enable)
 	gene.enabled = not gene.enabled
 end
 
-function mutate(genome)
+function mutate(genome, net_num)
 	for mutation, rate in pairs(genome.mutation_rates) do
 		if math.random(1, 2) == 1 then
 			genome.mutation_rates[mutation] = 0.95 * rate
@@ -896,7 +899,7 @@ function mutate(genome)
 	local p = genome.mutation_rates["link"]
 	while p > 0 do
 		if math.random() < p then
-			link_mutate(genome, false)
+			link_mutate(genome, false, net_num)
 		end
 		p = p - 1
 	end
@@ -904,7 +907,7 @@ function mutate(genome)
 	p = genome.mutation_rates["bias"]
 	while p > 0 do
 		if math.random() < p then
-			link_mutate(genome, true)
+			link_mutate(genome, true, net_num)
 		end
 		p = p - 1
 	end
@@ -912,7 +915,7 @@ function mutate(genome)
 	p = genome.mutation_rates["node"]
 	while p > 0 do
 		if math.random() < p then
-			node_mutate(genome)
+			node_mutate(genome, net_num)
 		end
 		p = p - 1
 	end
@@ -933,16 +936,18 @@ function mutate(genome)
 		p = p - 1
 	end
 end
+
 function calculate_average_fitness(species)
 	local total = 0
 
-	for g=1,#species.genomes do
+	for g = 1, #species.genomes do
 		local genome = species.genomes[g]
 		total = total + genome.global_rank
 	end
 
 	species.average_fitness = total / #species.genomes
 end
+
 function player_fitness(player_num)
 	local enemy = player_num == 0 and 2 or 1
 	local key = player_num == 0 and "P1" or "P2"
@@ -952,12 +957,14 @@ function player_fitness(player_num)
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 5 or 0
-	--[[		print("max health for " .. key .. " "..max_health[player_num +1 ] )
-			print("health for " .. key .. " "..get_health(player_num))
-			print("multiplier" .. multiplier)
-			print("damage taken "..player_num + 1 .. " ".. damage_taken)
-			print("damage made " .. enemy .. " ".. damage_made)
-			print("Time cornered " .. enemy .. " ".. time_cornered[enemy] /60)
+	--[[	print(" ")
+		print(key)
+		print("max health for " .. key .. " " .. max_health[player_num + 1])
+		print("health for " .. key .. " " .. get_health(player_num))
+		print("multiplier" .. multiplier)
+		print("damage taken " .. player_num + 1 .. " " .. damage_taken)
+		print("damage made " .. enemy .. " " .. damage_made)
+		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
 	return 10 + multiplier * math.floor(2 * (time_cornered[enemy] / 60) - 3 * damage_taken + 5 * damage_made + bonus)
 end
@@ -1027,10 +1034,10 @@ end
 ----------------
 -- END MUTATION--
 ----------------
-function rank_globally()
+function rank_globally(net_num)
 	local global = {}
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+	for s = 1, #pool[net_num].species do
+		local species = pool[net_num].species[s]
 		for g = 1, #species.genomes do
 			table.insert(global, species.genomes[g])
 		end
@@ -1044,10 +1051,10 @@ function rank_globally()
 	end
 end
 
-function total_average_fitness()
+function total_average_fitness(net_num)
 	local total = 0
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+	for s = 1, #pool[net_num].species do
+		local species = pool[net_num].species[s]
 		total = total + species.average_fitness
 	end
 
@@ -1057,9 +1064,9 @@ end
 --------------------------
 -- EVOLUTION AND BREEDING--
 --------------------------
-function cull_species(cut_to_one)
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+function cull_species(cut_to_one, net_num)
+	for s = 1, #pool[net_num].species do
+		local species = pool[net_num].species[s]
 
 		table.sort(species.genomes, function(a, b)
 			return (a.fitness > b.fitness)
@@ -1074,9 +1081,10 @@ function cull_species(cut_to_one)
 		end
 	end
 end
+
 function copy_genome(genome)
 	local genome2 = new_genome()
-	for g=1,#genome.genes do
+	for g = 1, #genome.genes do
 		table.insert(genome2.genes, copy_gene(genome.genes[g]))
 	end
 	genome2.max_neuron = genome.max_neuron
@@ -1089,7 +1097,8 @@ function copy_genome(genome)
 
 	return genome2
 end
-function breed_child(species)
+
+function breed_child(species, net_num)
 	local child = {}
 	if math.random() < CrossoverChance then
 		local g1 = species.genomes[math.random(1, #species.genomes)]
@@ -1100,16 +1109,16 @@ function breed_child(species)
 		child = copy_genome(g)
 	end
 
-	mutate(child)
+	mutate(child, net_num)
 
 	return child
 end
 
-function remove_stale_species()
+function remove_stale_species(net_num)
 	local survived = {}
 
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+	for s = 1, #pool[net_num].species do
+		local species = pool[net_num].species[s]
 
 		table.sort(species.genomes, function(a, b)
 			return (a.fitness > b.fitness)
@@ -1121,34 +1130,34 @@ function remove_stale_species()
 		else
 			species.staleness = species.staleness + 1
 		end
-		if species.staleness < StaleSpecies or species.topFitness >= pool.maxFitness then
+		if species.staleness < StaleSpecies or species.topFitness >= pool[net_num].maxFitness then
 			table.insert(survived, species)
 		end
 	end
 
-	pool.species = survived
+	pool[net_num].species = survived
 end
 
-function remove_weak_species()
+function remove_weak_species(net_num)
 	local survived = {}
 
 	local sum = total_average_fitness()
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+	for s = 1, #pool[net_num].species do
+		local species = pool[net_num].species[s]
 		local breed = math.floor(species.average_fitness / sum * Population)
 		if breed >= 1 then
 			table.insert(survived, species)
 		end
 	end
 
-	pool.species = survived
+	pool[net_num].species = survived
 end
 
 
-function add_to_species(child)
+function add_to_species(child, pool_num)
 	local found_species = false
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+	for s = 1, #pool[pool_num].species do
+		local species = pool[pool_num].species[s]
 		if not found_species and same_species(child, species.genomes[1]) then
 			table.insert(species.genomes, child)
 			found_species = true
@@ -1158,42 +1167,42 @@ function add_to_species(child)
 	if not found_species then
 		local child_species = new_species()
 		table.insert(child_species.genomes, child)
-		table.insert(pool.species, child_species)
+		table.insert(pool[pool_num].species, child_species)
 	end
 end
 
-function new_generation()
-	cull_species(false) -- Cull the bottom half of each species
-	rank_globally()
-	remove_stale_species()
-	rank_globally()
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+function new_generation(net_num)
+	cull_species(false, net_num) -- Cull the bottom half of each species
+	rank_globally(net_num)
+	remove_stale_species(net_num)
+	rank_globally(net_num)
+	for s = 1, #pool[net_num].species do
+		local species = pool[net_num].species[s]
 		calculate_average_fitness(species)
 	end
-	remove_weak_species()
-	local sum = total_average_fitness()
+	remove_weak_species(net_num)
+	local sum = total_average_fitness(net_num)
 	local children = {}
-	for s = 1, #pool.species do
-		local species = pool.species[s]
+	for s = 1, #pool[net_num].species do
+		local species = pool[net_num].species[s]
 		local breed = math.floor(species.average_fitness / sum * Population) - 1
 		for i = 1, breed do
-			table.insert(children, breed_child(species))
+			table.insert(children, breed_child(species, net_num))
 		end
 	end
-	cull_species(true) -- Cull all but the top member of each species
-	while #children + #pool.species < Population do
-		local species = pool.species[math.random(1, #pool.species)]
+	cull_species(true, net_num) -- Cull all but the top member of each species
+	while #children + #pool[net_num].species < Population do
+		local species = pool[net_num].species[math.random(1, #pool[net_num].species)]
 		table.insert(children, breed_child(species))
 	end
 	for c = 1, #children do
 		local child = children[c]
-		add_to_species(child)
+		add_to_species(child, net_num)
 	end
 
-	pool.generation = pool.generation + 1
+	pool[net_num].generation = pool[net_num].generation + 1
 
-	--writeFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
+	--writeFile("backup." .. pool[net_num].generation .. "." .. forms.gettext(saveLoadFile))
 end
 
 ------------------------------
@@ -1204,22 +1213,24 @@ end
 --------- CURRENT GENOME-------
 ------------------------------
 function initialize_pool()
-	pool = new_pool()
+	pool = { new_pool(), new_pool() }
 
-	for i = 1, Population do
-		local basic = basic_genome()
-		add_to_species(basic)
+	for pool_num = 1, #pool do
+		for i = 1, Population do
+			local basic = basic_genome(pool_num)
+			add_to_species(basic, pool_num)
+		end
 	end
 end
 
-function next_genome()
-	pool.current_genome = pool.current_genome + 1
-	if pool.current_genome > #pool.species[pool.current_species].genomes then
-		pool.current_genome = 1
-		pool.current_species = pool.current_species + 1
-		if pool.current_species > #pool.species then
-			new_generation()
-			pool.current_species = 1
+function next_genome(net_num)
+	pool[net_num].current_genome = pool[net_num].current_genome + 1
+	if pool[net_num].current_genome > #pool[net_num].species[pool[net_num].current_species].genomes then
+		pool[net_num].current_genome = 1
+		pool[net_num].current_species = pool[net_num].current_species + 1
+		if pool[net_num].current_species > #pool[net_num].species then
+			new_generation(net_num)
+			pool[net_num].current_species = 1
 		end
 	end
 end
@@ -1230,30 +1241,29 @@ end
 ------------------------------
 function evaluate_current(player_num)
 	local key = player_num == 0 and "P1" or "P2"
-
-	local species = pool.species[pool.current_species]
-	local genome = species.genomes[pool.current_genome]
-
+	local net_num = player_num + 1
+	local species = pool[net_num].species[pool[net_num].current_species]
+	local genome = species.genomes[pool[net_num].current_genome]
 	local inputs = get_inputs(player_num)
 	--	controllers[key]
-	local net_response = evaluate_network(genome.network, inputs, player_num)
+	local net_response = evaluate_network(genome.network, inputs, net_num)
 
 	--print(" ")
 	for button_name, button_value in pairs(net_response) do
-		local bv = num(button_value)
-
-		if array_has_value(special_attacks, string.sub(button_name, 3)) then
-			local special_move = string.match(button_name, "%d+")
-			if bv == 1 then
-				curr_special_move[key] = tonumber(special_move)
-				player_frame(player_num)
+		if string.match(button_name, key) then
+			local bv = num(button_value)
+			if array_has_value(special_attacks, string.sub(button_name, 3)) then
+				local special_move = string.match(button_name, "%d+")
+				if bv == 1 then
+					curr_special_move[key] = tonumber(special_move)
+					player_frame(player_num)
+				end
+			else
+				--			print("In controller " .. key .." setting " .. button_name .. " as " .. bv)
+				controllers[key][button_name].state = bv
 			end
-		else
-			--print("Setting " .. button_name .. " as " .. bv)
-			controllers[key][button_name].state = bv
 		end
 	end
-
 	set_input(key)
 end
 
@@ -1402,46 +1412,47 @@ function player_frame(player)
 end
 
 function advance_neural_net(player_num)
-	local species = pool.species[pool.current_species]
-	local genome = species.genomes[pool.current_genome]
+	local net_num = player_num + 1
+	local species = pool[net_num].species[pool[net_num].current_species]
+	local genome = species.genomes[pool[net_num].current_genome]
 	local p_fitness = player_fitness(player_num)
-	print("Player: " .. player_num .. " gen " .. pool.generation .. " species " .. pool.current_species .. " genome " .. pool.current_genome
+	print("Player: " .. player_num .. " gen " .. pool[net_num].generation .. " species " .. pool[net_num].current_species .. " genome " .. pool[net_num].current_genome
 			.. " fitness: " .. p_fitness)
 	genome.fitness = p_fitness
 
-	if p_fitness > pool.max_fitness then
-		pool.max_fitness = p_fitness
+	if p_fitness > pool[net_num].max_fitness then
+		pool[net_num].max_fitness = p_fitness
 	end
-
-	start_round()
 end
 
 function main()
 
-	pool.current_frame = pool.current_frame + 1
-	for i = 0, 1 do -- TODO Change once it works with a single controller
+	for i = 0, 1 do
+		local pool_num = i + 1
+		pool[pool_num].current_frame = tonumber(pool[pool_num].current_frame) + 1
 		local key = i == 0 and "P1" or "P2"
 		local enemy = player_num == 0 and 1 or 0
-		if pool.current_frame % 3 == 0 then
-			local species = pool.species[pool.current_species]
-			local genome = species.genomes[pool.current_genome]
+		if pool[pool_num].current_frame % 3 == 0 then
+			local species = pool[pool_num].species[pool[pool_num].current_species]
+			local genome = species.genomes[pool[pool_num].current_genome]
 			--draw_genome(genome)
-			if not is_round_finished() then
-				if curr_special_move[key] ~= 0 then
-					player_frame(i)
-				else
-					clear_input(i)
-					evaluate_current(i)
-				end
-				if is_cornered(enemy) == 1 then --TODO Change it when both players are being controlled by the net
-					time_cornered[enemy +1 ] = time_cornered[enemy +1] + 1
-				end
+			if curr_special_move[key] ~= 0 then
+				player_frame(i)
 			else
-
-				advance_neural_net(i)
+				clear_input(i)
+				evaluate_current(i)
 			end
-		else
+			if is_cornered(enemy) == 1 then
+				time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
+			end
 		end
+	end
+	if is_round_finished() then
+		for i = 0, 1 do
+			advance_neural_net(i)
+		end
+		start_round()
+
 	end
 end
 
