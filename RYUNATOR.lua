@@ -52,7 +52,7 @@ local gui = manager:machine().screens[":screen"]
 gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
-Population = 100
+Population = 3
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -844,7 +844,6 @@ function node_mutate(genome, net_num)
 	if #genome.genes == 0 then
 		return
 	end
-
 	genome.max_neuron = genome.max_neuron + 1
 
 	local gene = genome.genes[math.random(1, #genome.genes)]
@@ -1141,7 +1140,7 @@ end
 function remove_weak_species(net_num)
 	local survived = {}
 
-	local sum = total_average_fitness()
+	local sum = total_average_fitness(net_num)
 	for s = 1, #pool[net_num].species do
 		local species = pool[net_num].species[s]
 		local breed = math.floor(species.average_fitness / sum * Population)
@@ -1193,7 +1192,7 @@ function new_generation(net_num)
 	cull_species(true, net_num) -- Cull all but the top member of each species
 	while #children + #pool[net_num].species < Population do
 		local species = pool[net_num].species[math.random(1, #pool[net_num].species)]
-		table.insert(children, breed_child(species))
+		table.insert(children, breed_child(species, net_num))
 	end
 	for c = 1, #children do
 		local child = children[c]
@@ -1426,7 +1425,6 @@ function advance_neural_net(player_num)
 end
 
 function main()
-
 	for i = 0, 1 do
 		local pool_num = i + 1
 		pool[pool_num].current_frame = tonumber(pool[pool_num].current_frame) + 1
@@ -1442,9 +1440,9 @@ function main()
 				clear_input(i)
 				evaluate_current(i)
 			end
-			if is_cornered(enemy) == 1 then
-				time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
-			end
+		end
+		if is_cornered(enemy) == 1 then
+			time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
 		end
 	end
 	if is_round_finished() then
@@ -1452,7 +1450,6 @@ function main()
 			advance_neural_net(i)
 		end
 		start_round()
-
 	end
 end
 
