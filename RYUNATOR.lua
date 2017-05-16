@@ -11,7 +11,7 @@ local pool
 local controllers
 
 local max_health = {}
-local time_cornered = {}
+local time_cornered, time_blocking, time_air = {}, {}, {}
 local punches = {
 	" Jab Punch",
 	" Strong Punch",
@@ -52,7 +52,7 @@ local gui = manager:machine().screens[":screen"]
 gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
-Population = 150
+Population = 300
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -292,14 +292,14 @@ end
 function is_cornered(player_num)
 
 	local pos_player = get_pos_x(player_num)
-	local pos_other = get_pos_x((player_num + 1) % 2)
 
-	if pos_player > 925 and get_forward(player_num) == " Left" then
-		return 1
-	elseif pos_player < 345 and get_forward(player_num) == " Right" then
-		return 1
+	if get_x_distance() < 90 then
+		if pos_player > 925 and get_forward(player_num) == " Left" then
+			return 1
+		elseif pos_player < 345 and get_forward(player_num) == " Right" then
+			return 1
+		end
 	end
-
 	return 0
 end
 
@@ -381,7 +381,10 @@ function start_round()
 	max_health[2] = get_health(1) < 144 and 144 or get_health(1)
 	time_cornered[1] = 0
 	time_cornered[2] = 0
-
+	time_blocking[1] = 0
+	time_blocking[2] = 0
+	time_air[1] = 0
+	time_air[2] = 0
 
 
 	for i = 1, 2 do
@@ -951,13 +954,15 @@ function player_fitness(player_num)
 	local enemy = player_num == 0 and 2 or 1
 	local key = player_num == 0 and "P1" or "P2"
 
-	local multiplier = math.ceil((get_timer() + 1) / 20)
+	local multiplier = math.ceil((get_timer() + 1) / 30)
 
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50 or 0
-	--[[	print(" ")
+--[[		print(" ")
 		print(key)
+		print("Time midair in seconds " .. time_air[player_num +1 ] /60)
+		print("Blocked for " .. time_blocking[player_num +1] .. " frames " )
 		print("max health for " .. key .. " " .. max_health[player_num + 1])
 		print("health for " .. key .. " " .. get_health(player_num))
 		print("multiplier" .. multiplier)
@@ -965,7 +970,8 @@ function player_fitness(player_num)
 		print("damage made " .. enemy .. " " .. damage_made)
 		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
-	return multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - 4 * damage_taken
+	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus ) - 4 * damage_taken
+			+ time_blocking[player_num + 1] / 4 + time_air[player_num + 1] /60)
 end
 
 
@@ -1249,7 +1255,7 @@ function evaluate_current(player_num)
 
 	--print(" ")
 	for button_name, button_value in pairs(net_response) do
---		print("Is " .. button_name .. " part of " .. key )
+		--		print("Is " .. button_name .. " part of " .. key )
 		if string.match(button_name, key) then
 			local bv = num(button_value)
 			if array_has_value(special_attacks, string.sub(button_name, 3)) then
@@ -1259,7 +1265,7 @@ function evaluate_current(player_num)
 					player_frame(player_num)
 				end
 			else
---							print("In controller " .. key .." setting " .. button_name .. " as " .. bv)
+				--							print("In controller " .. key .." setting " .. button_name .. " as " .. bv)
 				controllers[key][button_name].state = bv
 			end
 		end
@@ -1442,10 +1448,17 @@ function main()
 				evaluate_current(i)
 			end
 		end
+		if is_midair(i) == 1 then
+			time_air[i+1] = time_air[i+1] +1
+		end
+		if get_blocking(i) ~= 0 then
+			time_blocking[i + 1] = time_blocking[i + 1] + 1
+		end
 		if is_cornered(enemy) == 1 then
 			time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
 		end
 	end
+
 	if is_round_finished() then
 		print(" ")
 		for i = 0, 1 do
