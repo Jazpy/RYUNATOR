@@ -970,8 +970,8 @@ function player_fitness(player_num)
 		print("damage made " .. enemy .. " " .. damage_made)
 		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
-	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - (4 * damage_taken)
-			+ time_blocking[player_num + 1] / 4 + time_air[player_num + 1] / 60)
+	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - (3 * damage_taken)
+			+ time_blocking[player_num + 1]/4 + 5 * time_air[player_num + 1] / 60)
 end
 
 
