@@ -52,7 +52,7 @@ local gui = manager:machine().screens[":screen"]
 gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
-Population = 300
+Population = 150
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -959,19 +959,19 @@ function player_fitness(player_num)
 	local damage_taken = max_health[player_num + 1] - get_health(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local health_difference = damage_taken - damage_made
-	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50  or 0
---[[	print(" ")
-	print(key)
-	print("Time midair in seconds " .. time_air[player_num + 1] / 60)
-	print("Blocked for " .. time_blocking[player_num + 1] .. " frames ")
-	print("health for " .. key .. " " .. get_health(player_num))
-	print("multiplier" .. multiplier)
-	print("damage taken " .. player_num + 1 .. " " .. damage_taken)
-	print("damage made " .. enemy .. " " .. damage_made)
-	print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
-	print("bonus" .. bonus)]]
-	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - (4 * damage_taken)
-			+ time_blocking[player_num + 1] / 4 + time_air[player_num + 1] / 60)
+	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50 or 0
+	--[[	print(" ")
+		print(key)
+		print("Time midair in seconds " .. time_air[player_num + 1] / 60)
+		print("Blocked for " .. time_blocking[player_num + 1] .. " frames ")
+		print("health for " .. key .. " " .. get_health(player_num))
+		print("multiplier" .. multiplier)
+		print("damage taken " .. player_num + 1 .. " " .. damage_taken)
+		print("damage made " .. enemy .. " " .. damage_made)
+		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
+		print("bonus" .. bonus)]]
+	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - (3 * damage_taken)
+			+ time_blocking[player_num + 1]/4 + 5 * time_air[player_num + 1] / 60)
 end
 
 
@@ -1207,7 +1207,6 @@ function new_generation(net_num)
 
 	pool[net_num].generation = pool[net_num].generation + 1
 
-	--writeFile("backup." .. pool[net_num].generation .. "." .. forms.gettext(saveLoadFile))
 end
 
 ------------------------------
@@ -1225,6 +1224,11 @@ function initialize_pool()
 			local basic = basic_genome(pool_num)
 			add_to_species(basic, pool_num)
 		end
+		local species = pool[pool_num].species[pool[pool_num].current_species]
+		local genome = species.genomes[pool[pool_num].current_genome]
+		generate_network(genome)
+
+		load_pool(pool_num)
 	end
 end
 
@@ -1234,6 +1238,7 @@ function next_genome(net_num)
 		pool[net_num].current_genome = 1
 		pool[net_num].current_species = pool[net_num].current_species + 1
 		if pool[net_num].current_species > #pool[net_num].species then
+			save_file(net_num)
 			new_generation(net_num)
 			pool[net_num].current_species = 1
 		end
@@ -1252,7 +1257,7 @@ function evaluate_current(player_num)
 	local inputs = get_inputs(player_num)
 	--	controllers[key]
 	local net_response = evaluate_network(genome.network, inputs, net_num)
-
+	--draw_genome(genome, player_num)
 	--print(" ")
 	for button_name, button_value in pairs(net_response) do
 		--		print("Is " .. button_name .. " part of " .. key )
@@ -1274,129 +1279,98 @@ function evaluate_current(player_num)
 end
 
 --------------
---- GUI ------
+--- FILES------
 --------------
-function draw_genome(genome, player_num)
-	local network = genome.network
-	local cells = {}
-	local i = 1
-	local cell = {}
-	for dy = -gui_element, gui_element do
-		for dx = -gui_element, gui_element do
-			cell = {}
-			cell.x = 50 + 5 * dx
-			cell.y = 70 + 5 * dy
-			cell.value = network.neurons[i].value
-			cells[i] = cell
-			i = i + 1
-		end
-	end
-	local biasCell = {}
-	biasCell.x = 80
-	biasCell.y = 110
-	biasCell.value = network.neurons[Inputs].value
-	cells[Inputs] = biasCell
-
-	for o = 1, Outputs do
-		cell = {}
-		cell.x = 220
-		cell.y = 30 + 8 * o
-		cell.value = network.neurons[MaxNodes + o].value
-		cells[MaxNodes + o] = cell
-		local color
-		if cell.value > 0 then
-			color = 0xFF0000FF
-		else
-			color = 0xFF000000
-		end
-		gui:draw_text(223, 24 + 8 * o, output_buttons[o])
-	end
-
-	for n, neuron in pairs(network.neurons) do
-		cell = {}
-		if n > Inputs and n <= MaxNodes then
-			cell.x = 140
-			cell.y = 40
-			cell.value = neuron.value
-			cells[n] = cell
-		end
-	end
-
-	for n = 1, 4 do
-		for _, gene in pairs(genome.genes) do
-			if gene.enabled then
-				local c1 = cells[gene.into]
-				local c2 = cells[gene.out]
-				if gene.into > Inputs and gene.into <= MaxNodes then
-					c1.x = 0.75 * c1.x + 0.25 * c2.x
-					if c1.x >= c2.x then
-						c1.x = c1.x - 40
-					end
-					if c1.x < 90 then
-						c1.x = 90
-					end
-
-					if c1.x > 220 then
-						c1.x = 220
-					end
-					c1.y = 0.75 * c1.y + 0.25 * c2.y
+function load_file(pool_num)
+	local filename = "player_" .. pool_num .. ".pool"
+	local file = io.open(filename, "r")
+	if file ~= nil then
+		print("Successfully loaded " .. filename)
+		pool[pool_num] = new_pool()
+		pool[pool_num].generation = file:read("*number")
+		pool[pool_num].max_fitness = file:read("*number")
+		local num_species = file:read("*number")
+		for s = 1, num_species do
+			local species = new_species()
+			table.insert(pool[pool_num].species, species)
+			species.top_fitness = file:read("*number")
+			species.staleness = file:read("*number")
+			local num_genomes = file:read("*number")
+			for g = 1, num_genomes do
+				local genome = new_genome()
+				table.insert(species.genomes, genome)
+				genome.fitness = file:read("*number")
+				genome.max_neuron = file:read("*number")
+				local line = file:read("*line")
+				while line ~= "done" do
+					genome.mutation_rates[line] = file:read("*number")
+					line = file:read("*line")
 				end
-				if gene.out > Inputs and gene.out <= MaxNodes then
-					c2.x = 0.25 * c1.x + 0.75 * c2.x
-					if c1.x >= c2.x then
-						c2.x = c2.x + 40
+				local num_genes = file:read("*number")
+				for n = 1, num_genes do
+					local gene = new_gene()
+					table.insert(genome.genes, gene)
+					local enabled
+					gene.into, gene.out, gene.weight, gene.innovation, enabled = file:read("*number", "*number", "*number", "*number", "*number")
+					if enabled == 0 then
+						gene.enabled = false
+					else
+						gene.enabled = true
 					end
-					if c2.x < 90 then
-						c2.x = 90
-					end
-					if c2.x > 220 then
-						c2.x = 220
-					end
-					c2.y = 0.25 * c1.y + 0.75 * c2.y
 				end
 			end
 		end
+		file:close()
 	end
-
-	gui.drawBox(50 - gui_element * 5 - 3, 70 - gui_element * 5 - 3, 50 + gui_element * 5 + 2, 70 + gui_element * 5 + 2, 0xFF000000, 0x80808080)
-	for n, cell in pairs(cells) do
-		if n > Inputs or cell.value ~= 0 then
-			local color = math.floor((cell.value + 1) / 2 * 256)
-			if color > 255 then color = 255 end
-			if color < 0 then color = 0 end
-			local opacity = 0xFF000000
-			if cell.value == 0 then
-				opacity = 0x50000000
-			end
-			color = opacity + color * 0x10000 + color * 0x100 + color
-			gui.drawBox(cell.x - 2, cell.y - 2, cell.x + 2, cell.y + 2, opacity, color)
-		end
-	end
-	for _, gene in pairs(genome.genes) do
-		if gene.enabled then
-			local c1 = cells[gene.into]
-			local c2 = cells[gene.out]
-			local opacity = 0xA0000000
-			if c1.value == 0 then
-				opacity = 0x20000000
-			end
-
-			local color = 0x80 - math.floor(math.abs(sigmoid(gene.weight)) * 0x80)
-			if gene.weight > 0 then
-				color = opacity + 0x8000 + 0x10000 * color
-			else
-				color = opacity + 0x800000 + 0x100 * color
-			end
-			gui:draw_line(c1.x + 1, c1.y, c2.x - 3, c2.y, color)
-		end
-	end
-
-	gui:draw_bow(49, 71, 51, 78, 0x00000000, 0x80FF0000)
 end
 
---------------
---- END GUI --
---------------
+function write_file(pool_num)
+	print("Writing file ".. "player_" .. pool_num .. ".pool")
+	local file = io.open("player_" .. pool_num .. ".pool", "w")
+	file:write(pool[pool_num].generation .. "\n")
+	file:write(pool[pool_num].max_fitness .. "\n")
+	file:write(#pool[pool_num].species .. "\n")
+	for n, species in pairs(pool[pool_num].species) do
+		file:write(species.top_fitness .. "\n")
+		file:write(species.staleness .. "\n")
+		file:write(#species.genomes .. "\n")
+		for m, genome in pairs(species.genomes) do
+			file:write(genome.fitness .. "\n")
+			file:write(genome.max_neuron .. "\n")
+			for mutation, rate in pairs(genome.mutation_rates) do
+				file:write(mutation .. "\n")
+				file:write(rate .. "\n")
+			end
+			file:write("done\n")
+
+			file:write(#genome.genes .. "\n")
+			for l, gene in pairs(genome.genes) do
+				file:write(gene.into .. " ")
+				file:write(gene.out .. " ")
+				file:write(gene.weight .. " ")
+				file:write(gene.innovation .. " ")
+				if (gene.enabled) then
+					file:write("1\n")
+				else
+					file:write("0\n")
+				end
+			end
+		end
+	end
+	file:close()
+end
+
+function load_pool(pool_num)
+	load_file(pool_num)
+end
+
+function save_file(pool_num)
+	write_file(pool_num)
+end
+
+---------------
+--- END FILES--
+---------------
 --------------
 -- END NEAT --
 --------------
@@ -1432,15 +1406,13 @@ function advance_neural_net(player_num)
 end
 
 function main()
+
 	for i = 0, 1 do
 		local pool_num = i + 1
 		pool[pool_num].current_frame = pool[pool_num].current_frame + 1
 		local key = i == 0 and "P1" or "P2"
 		local enemy = player_num == 0 and 1 or 0
 		if pool[pool_num].current_frame % 3 == 0 then
-			local species = pool[pool_num].species[pool[pool_num].current_species]
-			local genome = species.genomes[pool[pool_num].current_genome]
-			--draw_genome(genome)
 			if curr_special_move[key] ~= 0 then
 				player_frame(i)
 			else
