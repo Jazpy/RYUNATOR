@@ -12,6 +12,7 @@ local controllers
 
 local max_health = {}
 local time_cornered, time_blocking, time_air = {}, {}, {}
+local win_streak = 0
 local punches = {
 	" Jab Punch",
 	" Strong Punch",
@@ -387,6 +388,26 @@ function start_round()
 	time_air[2] = 0
 
 
+	if win_streak % 5 == 0 and  win_streak ~= 0 then
+		print("Mixing nets")
+		local species = pool[1].species[pool[1].current_species]
+		local g1 = species.genomes[pool[1].current_genome]
+
+		local species2 = pool[2].species[pool[2].current_species]
+		local g2 = species2.genomes[pool[2].current_genome]
+		local child = {}
+		if win_streak < 0 then
+			print("Mixing net 2 into 1")
+
+			child = mix_nets(g1, g2, 1)
+			table.insert(child, breed_child(species, 1))
+		else
+			print("Mixing net 1 into 2 ")
+			child = mix_nets(g1, g2, 2)
+			table.insert(child, breed_child(species2, 2))
+		end
+		win_streak = 0
+	end
 	for i = 1, 2 do
 		next_genome(i)
 		local species = pool[i].species[pool[i].current_species]
@@ -971,7 +992,7 @@ function player_fitness(player_num)
 		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
 	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - (3 * damage_taken)
-			+ time_blocking[player_num + 1]/4 + 5 * time_air[player_num + 1] / 60)
+			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60)
 end
 
 
@@ -1119,6 +1140,15 @@ function breed_child(species, net_num)
 	return child
 end
 
+function mix_nets(g1, g2, net_num)
+	local child = crossover(g1, g2)
+	child = copy_genome(child)
+
+	mutate(child, net_num)
+
+	return child
+end
+
 function remove_stale_species(net_num)
 	local survived = {}
 
@@ -1206,7 +1236,6 @@ function new_generation(net_num)
 	end
 
 	pool[net_num].generation = pool[net_num].generation + 1
-
 end
 
 ------------------------------
@@ -1325,7 +1354,7 @@ function load_file(pool_num)
 end
 
 function write_file(pool_num)
-	print("Writing file ".. "player_" .. pool_num .. ".pool")
+	print("Writing file " .. "player_" .. pool_num .. ".pool")
 	local file = io.open("player_" .. pool_num .. ".pool", "w")
 	file:write(pool[pool_num].generation .. "\n")
 	file:write(pool[pool_num].max_fitness .. "\n")
@@ -1396,10 +1425,16 @@ function advance_neural_net(player_num)
 	local species = pool[net_num].species[pool[net_num].current_species]
 	local genome = species.genomes[pool[net_num].current_genome]
 	local p_fitness = player_fitness(player_num)
-	print("Player: " .. player_num .. " gen " .. pool[net_num].generation .. " species " .. pool[net_num].current_species .. " genome " .. pool[net_num].current_genome
-			.. " fitness: " .. p_fitness)
+	print("Player: " .. player_num .. " gen " .. pool[net_num].generation .. " species " .. pool[net_num].current_species .. " genome " .. pool[net_num].current_genome .. " fitness: " .. p_fitness)
 	genome.fitness = p_fitness
-
+	local winner = get_round_winner() == player_num + 1
+	if winner then
+		local win_add = player_num == 0 and 1 or -1
+		win_streak = win_add + win_streak
+	end
+	if get_round_winner() == 255 then
+		win_streak = 0
+	end
 	if p_fitness > pool[net_num].max_fitness then
 		pool[net_num].max_fitness = p_fitness
 	end
