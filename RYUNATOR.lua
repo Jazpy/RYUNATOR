@@ -1,7 +1,6 @@
 local mem = manager:machine().devices[":maincpu"].spaces["program"]
--- Player Controller
--- Player stats dict
-local p1_stats, p2_stats = {}, {}
+
+
 -- Memory address offset to differentiate p1 and p2
 local player_offset = 0x0300
 -- Memory address offset for projectile slots
@@ -43,17 +42,16 @@ local output_buttons = {
 	" Short Kick",
 	" Forward Kick",
 	" Roundhouse Kick",
---[[	" special 1",
+	" special 1",
 	" special 2",
-	" special 3",]]
+	" special 3",
 }
 
-local gui = manager:machine().screens[":screen"]
 
 gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
-Population = 400
+Population = 150
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -86,13 +84,13 @@ local curr_special_move = { ["P1"] = 0, ["P2"] = 0 }
 -- CONTROLLER INPUT --
 ----------------------
 local function set_input(key)
---[[	print("key is " .. key)
-	for kp, p in pairs(controllers) do
-		print("Values for table " .. kp)
-		for k, b in pairs(p) do
-			print(k .. " : " .. b.state)
-		end
-	end]]
+	--[[	print("key is " .. key)
+		for kp, p in pairs(controllers) do
+			print("Values for table " .. kp)
+			for k, b in pairs(p) do
+				print(k .. " : " .. b.state)
+			end
+		end]]
 	for name, button in pairs(controllers[key]) do
 		button.field:set_value(button.state)
 	end
@@ -390,25 +388,27 @@ function start_round()
 	time_air[2] = 0
 
 
-	if win_streak % 5 == 0 and win_streak ~= 0 then
-		print("Mixing nets")
-		local species = pool[1].species[pool[1].current_species]
-		local g1 = species.genomes[pool[1].current_genome]
+	if win_streak % 10 == 0 and win_streak ~= 0 then
+				print("Mixing nets")
+				local species = pool[1].species[pool[1].current_species]
+				local g1 = species.genomes[pool[1].current_genome]
 
-		local species2 = pool[2].species[pool[2].current_species]
-		local g2 = species2.genomes[pool[2].current_genome]
-		local child = {}
-		if win_streak < 0 then
-			print("Mixing net 2 into 1")
+				local species2 = pool[2].species[pool[2].current_species]
+				local g2 = species2.genomes[pool[2].current_genome]
+				local child = {}
+				if win_streak < 0 then
+					print("Mixing net 2 into 1")
 
-			child = mix_nets(g1, g2, 1)
-			table.insert(child, breed_child(species, 1))
-		else
-			print("Mixing net 1 into 2 ")
-			child = mix_nets(g1, g2, 2)
-			table.insert(child, breed_child(species2, 2))
-		end
-		win_streak = 0
+					child = mix_nets(g1, g2, 1)
+					table.insert(child, breed_child(species, 1))
+					add_to_species(child,1)
+				else
+					print("Mixing net 1 into 2 ")
+					child = mix_nets(g1, g2, 2)
+					table.insert(child, breed_child(species2, 2))
+					add_to_species(child,2)
+				end
+				win_streak = 0
 	end
 	for i = 1, 2 do
 		next_genome(i)
@@ -538,11 +538,11 @@ function get_inputs(player_num)
 		is_cornered(player_num),
 		is_midair(player_num),
 		is_thrown(player_num),
-				is_in_hitstun(player_num),
+		is_in_hitstun(player_num),
 		is_crouching(player_num),
 		is_invincible(player_num),
-		get_blocking(player_num) / 2,
-		get_attack_block(player_num) / 2,
+		get_blocking(player_num) ,
+		get_attack_block(player_num) ,
 
 		-- Enemy inputs
 		(get_pos_x(enemy) - 990) / (990 - 420),
@@ -554,8 +554,8 @@ function get_inputs(player_num)
 		is_in_hitstun(enemy),
 		is_crouching(enemy),
 		is_invincible(enemy),
-		get_blocking(enemy) / 2,
-		get_attack_block(enemy) / 2,
+		get_blocking(enemy) ,
+		get_attack_block(enemy) ,
 	}
 
 	for i = 0, 7, 1 do
@@ -811,9 +811,10 @@ end
 -------------
 -- Mutations--
 -------------
+
+-- Randomly modifies the weigt attributed to a local gene
 function point_mutate(genome)
 	local step = genome.mutation_rates["step"]
-
 	for i = 1, #genome.genes do
 		local gene = genome.genes[i]
 		if math.random() < PerturbChance then
@@ -824,6 +825,7 @@ function point_mutate(genome)
 	end
 end
 
+-- Creates new neuron
 function link_mutate(genome, force_bias, net_num)
 	local neuron1 = random_neuron(genome.genes, false)
 	local neuron2 = random_neuron(genome.genes, true)
@@ -982,8 +984,8 @@ function player_fitness(player_num)
 		print("damage made " .. enemy .. " " .. damage_made)
 		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
-	return math.floor(multiplier * math.floor(2 * (time_cornered[enemy] / 60) + 5 * damage_made + bonus) - (3 * damage_taken)
-			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60)
+	return math.floor((2 * (time_cornered[enemy] / 60) + 10 * damage_made ) - (4 * damage_taken)
+			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made )* multiplier))
 end
 
 
@@ -1441,7 +1443,7 @@ function main()
 		local key = i == 0 and "P1" or "P2"
 		local enemy = player_num == 0 and 1 or 0
 		if pool[pool_num].current_frame % 5 == 0 then
---			controllers[key][key .. " Fierce Punch"].state = 1
+			--			controllers[key][key .. " Fierce Punch"].state = 1
 			set_input(key)
 			if curr_special_move[key] ~= 0 then
 				player_frame(i)
@@ -1471,7 +1473,6 @@ function main()
 		start_round()
 	end
 end
-
 
 
 initialize_pool()
