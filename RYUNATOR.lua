@@ -43,9 +43,9 @@ local output_buttons = {
 	" Short Kick",
 	" Forward Kick",
 	" Roundhouse Kick",
-	" special 1",
+--[[	" special 1",
 	" special 2",
-	" special 3",
+	" special 3",]]
 }
 
 local gui = manager:machine().screens[":screen"]
@@ -53,7 +53,7 @@ local gui = manager:machine().screens[":screen"]
 gui_element = 6
 Inputs = 40
 Outputs = #output_buttons
-Population = 150
+Population = 400
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -86,13 +86,13 @@ local curr_special_move = { ["P1"] = 0, ["P2"] = 0 }
 -- CONTROLLER INPUT --
 ----------------------
 local function set_input(key)
-	--    print("key is ".. key)
-	--    for kp,p in pairs(controllers) do
-	--        print("Values for table " .. kp)
-	--        for k,b in pairs(p) do
-	--            print(k .. " : " .. b.state)
-	--        end
-	--    end
+--[[	print("key is " .. key)
+	for kp, p in pairs(controllers) do
+		print("Values for table " .. kp)
+		for k, b in pairs(p) do
+			print(k .. " : " .. b.state)
+		end
+	end]]
 	for name, button in pairs(controllers[key]) do
 		button.field:set_value(button.state)
 	end
@@ -105,7 +105,6 @@ local function clear_input(controller_to_update)
 	for button in pairs(controllers[key]) do
 		controllers[key][button].state = 0
 	end
-	set_input(key)
 end
 
 local function map_input()
@@ -121,6 +120,7 @@ local function map_input()
 	local IN2 = ports[":IN2"]
 
 	-- Iterate over fields (button names) and create button objects
+
 	for field_name, field in pairs(IN1.fields) do
 		local button = {}
 		button.port = IN1
@@ -132,6 +132,7 @@ local function map_input()
 
 	-- Iterate over fields (button names) and create button objects
 	for field_name, field in pairs(IN2.fields) do
+
 		local button = {}
 		button.port = IN2
 		button.field = field
@@ -257,13 +258,15 @@ function is_crouching(player_num)
 end
 
 -- player_num = player blocking
--- 0 = no block, 1 = standing block, 2 = crouching block
+-- 0 = no block, 1 = standing block, -1 = crouching block
 function get_blocking(player_num)
-	return get_animation_byte(player_num, 0x11, 1)
+	local blocking = get_animation_byte(player_num, 0x11, 1)
+
+	return blocking == 2 and -1 or blocking
 end
 
 -- player_num = player attacking
--- 0 = no attack, 1 = should block high, 2 = should block low
+-- 0 = no attack, 1 = should block high, -1 = should block low
 function get_attack_block(player_num)
 	if get_animation_byte(player_num, 0x0C, 1) == 0 then
 		return 0
@@ -272,7 +275,7 @@ function get_attack_block(player_num)
 	local attack_ex = get_hitbox_attack_byte(player_num, 0x7)
 
 	if attack_ex == 0 or attack_ex == 1 or attack_ex == 3 then
-		return 2
+		return -1
 	elseif attack_ex == 2 then
 		return 1
 	end
@@ -375,8 +378,7 @@ function get_backward(player)
 end
 
 function start_round()
-	clear_input(0)
-	clear_input(1)
+
 	manager:machine():load("1");
 	max_health[1] = get_health(0) < 144 and 144 or get_health(0)
 	max_health[2] = get_health(1) < 144 and 144 or get_health(1)
@@ -388,7 +390,7 @@ function start_round()
 	time_air[2] = 0
 
 
-	if win_streak % 5 == 0 and  win_streak ~= 0 then
+	if win_streak % 5 == 0 and win_streak ~= 0 then
 		print("Mixing nets")
 		local species = pool[1].species[pool[1].current_species]
 		local g1 = species.genomes[pool[1].current_genome]
@@ -424,17 +426,6 @@ end
 --------------------
 -- PLAYER ACTIONS --
 --------------------
-function neutral_jump(controller_to_update)
-	if not is_midair(controller_to_update) then
-		local key = controller_to_update == 0 and "P1" or "P2"
-		controllers[key]["P1 Up"].state = 1
-		controllers[key]["P1 Left"].state = 0
-		controllers[key]["P1 Right"].state = 0
-		controllers[key]["P1 Down"].state = 0
-		set_input(key)
-	end
-end
-
 function quarter_circle_forward(controller_to_update, punch_type)
 	local key = controller_to_update == 0 and "P1" or "P2"
 	local forward = get_forward(controller_to_update)
@@ -541,21 +532,21 @@ function get_inputs(player_num)
 		(get_x_distance()) / (264),
 
 		-- Own inputs
-		(get_pos_x(player_num) - 420) / (990 - 420),
+		(get_pos_x(player_num) - 990) / (990 - 420),
 		(get_pos_y(player_num) - 40) / (120 - 40),
 		get_health(player_num) / (max_health[(player_num + 1)]),
 		is_cornered(player_num),
 		is_midair(player_num),
 		is_thrown(player_num),
-		is_in_hitstun(player_num),
+				is_in_hitstun(player_num),
 		is_crouching(player_num),
 		is_invincible(player_num),
 		get_blocking(player_num) / 2,
 		get_attack_block(player_num) / 2,
 
 		-- Enemy inputs
-		(get_pos_x(enemy) - 420) / (990 - 420),
-		(get_pos_y(enemy) - 40) / (120 - 40),
+		(get_pos_x(enemy) - 990) / (990 - 420),
+		(get_pos_y(enemy) - 120) / (120 - 40),
 		get_health(enemy) / (max_health[enemy + 1]),
 		is_cornered(enemy),
 		is_midair(enemy),
@@ -1287,7 +1278,7 @@ function evaluate_current(player_num)
 	--	controllers[key]
 	local net_response = evaluate_network(genome.network, inputs, net_num)
 	--draw_genome(genome, player_num)
-	--print(" ")
+	--	print(" ")
 	for button_name, button_value in pairs(net_response) do
 		--		print("Is " .. button_name .. " part of " .. key )
 		if string.match(button_name, key) then
@@ -1299,7 +1290,8 @@ function evaluate_current(player_num)
 					player_frame(player_num)
 				end
 			else
-				--							print("In controller " .. key .." setting " .. button_name .. " as " .. bv)
+
+				--				print("Button " .. button_name .. " has value of \t \t" .. bv)
 				controllers[key][button_name].state = bv
 			end
 		end
@@ -1445,24 +1437,29 @@ function main()
 	for i = 0, 1 do
 		local pool_num = i + 1
 		pool[pool_num].current_frame = pool[pool_num].current_frame + 1
+
 		local key = i == 0 and "P1" or "P2"
 		local enemy = player_num == 0 and 1 or 0
-		if pool[pool_num].current_frame % 3 == 0 then
+		if pool[pool_num].current_frame % 5 == 0 then
+--			controllers[key][key .. " Fierce Punch"].state = 1
+			set_input(key)
 			if curr_special_move[key] ~= 0 then
 				player_frame(i)
 			else
-				clear_input(i)
 				evaluate_current(i)
 			end
-		end
-		if is_midair(i) == 1 then
-			time_air[i + 1] = time_air[i + 1] + 1
-		end
-		if get_blocking(i) ~= 0 then
-			time_blocking[i + 1] = time_blocking[i + 1] + 1
-		end
-		if is_cornered(enemy) == 1 then
-			time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
+			if is_midair(i) == 1 then
+				time_air[i + 1] = time_air[i + 1] + 1
+			end
+			if get_blocking(i) ~= 0 then
+				time_blocking[i + 1] = time_blocking[i + 1] + 1
+			end
+			if is_cornered(enemy) == 1 then
+				time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
+			end
+		else
+			set_input(key)
+			clear_input(i)
 		end
 	end
 
