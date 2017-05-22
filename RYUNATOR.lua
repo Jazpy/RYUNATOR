@@ -560,9 +560,19 @@ function get_inputs(player_num)
 	}
 
 	for i = 0, 7, 1 do
-		print("Proj " .. i  .. " x " ..  (projectile_pos_x(i) - 420) / (990 - 420) .. " y " .. (projectile_pos_y(i) - 40) / (120 - 40))
-		table.insert(input_table, (projectile_pos_x(i) - 420) / (990 - 420))
-		table.insert(input_table, (projectile_pos_y(i) - 40) / (120 - 40))
+		local distance_x, distance_y
+		if projectile_pos_x(i) > 0 then
+			distance_x = math.max(get_pos_x(player_num), projectile_pos_x(i)) - math.min(get_pos_x(player_num), projectile_pos_x(i))
+		else
+			distance_x = 0
+		end
+		if projectile_pos_y(i) > 0 then
+			distance_y = math.max(get_pos_y(player_num), projectile_pos_y(i)) - math.min(get_pos_y(player_num), projectile_pos_y(i))
+		else
+			distance_y = 0
+		end
+		table.insert(input_table, (distance_x / 264))
+		table.insert(input_table, (distance_y / 264))
 	end
 	return input_table
 end
@@ -1285,24 +1295,24 @@ function evaluate_current(player_num)
 	--	print(" ")
 	curr_special_move[key] = 1
 
---[[	for button_name, button_value in pairs(net_response) do
-		--		print("Is " .. button_name .. " part of " .. key )
-		if string.match(button_name, key) then
-			local bv = num(button_value)
-			if array_has_value(special_attacks, string.sub(button_name, 3)) then
-				local special_move = string.match(button_name, "%d+")
-				if bv == 1 then
-					curr_special_move[key] = tonumber(special_move)
-					player_frame(player_num)
-				end
-			else
+	--[[	for button_name, button_value in pairs(net_response) do
+			--		print("Is " .. button_name .. " part of " .. key )
+			if string.match(button_name, key) then
+				local bv = num(button_value)
+				if array_has_value(special_attacks, string.sub(button_name, 3)) then
+					local special_move = string.match(button_name, "%d+")
+					if bv == 1 then
+						curr_special_move[key] = tonumber(special_move)
+						player_frame(player_num)
+					end
+				else
 
-				--				print("Button " .. button_name .. " has value of \t \t" .. bv)
-				controllers[key][button_name].state = bv
+					--				print("Button " .. button_name .. " has value of \t \t" .. bv)
+					controllers[key][button_name].state = bv
+				end
 			end
 		end
-	end
-	set_input(key)]]
+		set_input(key)]]
 end
 
 --------------
@@ -1484,23 +1494,23 @@ function draw_hud()
 	for pool_num = 1, 2 do
 		local species = pool[pool_num].species[pool[pool_num].current_species]
 		local genome = species.genomes[pool[pool_num].current_genome]
-		local starting_x = 5 +  (pool_num - 1) * offset
+		local starting_x = 5 + (pool_num - 1) * offset
 		local network = genome.network
 		local cells = {}
 		local i = 1
 		local cell = {}
-		for dy=1, Inputs do
-				if i < Inputs then
-					cell = {}
+		for dy = 1, Inputs do
+			if i < Inputs then
+				cell = {}
 
-					cell.x = starting_x
-					cell.y = 30+ 2 * dy
+				cell.x = starting_x
+				cell.y = 30 + 2 * dy
 
-					cell.value = network.neurons[i].value
-					cells[i] = cell
-					i = i + 1
-				end
+				cell.value = network.neurons[i].value
+				cells[i] = cell
+				i = i + 1
 			end
+		end
 
 
 		local biasCell = {}
@@ -1515,14 +1525,13 @@ function draw_hud()
 			cell.y = 30 + 4 * o
 			cell.value = network.neurons[MaxNodes + o].value
 			cells[MaxNodes + o] = cell
-
 		end
 
-	local dy = 0
-	for n, neuron in pairs(network.neurons) do
+		local dy = 0
+		for n, neuron in pairs(network.neurons) do
 			cell = {}
 			if n > Inputs and n <= MaxNodes then
-				cell.x = 140 + (pool_num - 1) * offset + 5 * math.floor(dy / 15 )
+				cell.x = 140 + (pool_num - 1) * offset + 5 * math.floor(dy / 15)
 				cell.y = 40 + 3 * dy
 				cell.value = neuron.value
 				cells[n] = cell
@@ -1530,24 +1539,24 @@ function draw_hud()
 			end
 		end
 
-	for _, gene in pairs(genome.genes) do
-		if gene.enabled then
-			local c1 = cells[gene.into]
-			local c2 = cells[gene.out]
-			local opacity = 0xA0000000
-			if c1.value == 0 then
-				opacity = 0x20000000
-			end
+		for _, gene in pairs(genome.genes) do
+			if gene.enabled then
+				local c1 = cells[gene.into]
+				local c2 = cells[gene.out]
+				local opacity = 0xA0000000
+				if c1.value == 0 then
+					opacity = 0x20000000
+				end
 
-			local color = 0x80 - math.floor(math.abs(sigmoid(gene.weight)) * 0x80)
-			if gene.weight > 0 then
-				color = opacity + 0x8000 + 0x10000 * color
-			else
-				color = opacity + 0x800000 + 0x100 * color
+				local color = 0x80 - math.floor(math.abs(sigmoid(gene.weight)) * 0x80)
+				if gene.weight > 0 then
+					color = opacity + 0x8000 + 0x10000 * color
+				else
+					color = opacity + 0x800000 + 0x100 * color
+				end
+				gui:draw_line(c1.x + 1, c1.y, c2.x - 3, c2.y, color)
 			end
-			gui:draw_line(c1.x + 1, c1.y, c2.x - 3, c2.y, color)
 		end
-	end
 		for n, cell in pairs(cells) do
 			if n > Inputs or cell.value ~= 0 then
 				local color = math.floor((cell.value + 1) / 2 * 256)
