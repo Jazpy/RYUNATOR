@@ -307,6 +307,10 @@ function is_cornered(player_num)
 end
 
 -- 8 projectile slots, indexed from 0
+function is_projectile_active(projectile_slot)
+  return mem:read_u16(0xFF98C7 + (projectile_offset * projectile_slot)) ~= 0
+end
+
 function projectile_pos_x(projectile_slot)
 	return mem:read_u16(0xFF98BC + (projectile_offset * projectile_slot))
 end
@@ -1293,7 +1297,7 @@ function evaluate_current(player_num)
 	local net_response = evaluate_network(genome.network, inputs, net_num)
 	--draw_genome(genome, player_num)
 	--	print(" ")
-	curr_special_move[key] = 1
+  curr_special_move[key] = 1
 
 	--[[	for button_name, button_value in pairs(net_response) do
 			--		print("Is " .. button_name .. " part of " .. key )
@@ -1449,6 +1453,9 @@ function advance_neural_net(player_num)
 end
 
 function main()
+  
+  
+  print(is_projectile_active(0))
 
 	for i = 0, 1 do
 		local pool_num = i + 1
