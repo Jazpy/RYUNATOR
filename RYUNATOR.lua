@@ -1,4 +1,5 @@
 local mem = manager:machine().devices[":maincpu"].spaces["program"]
+local gui = manager:machine().screens[":screen"]
 
 
 -- Memory address offset to differentiate p1 and p2
@@ -56,13 +57,13 @@ DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
 
-StaleSpecies = 15
+StaleSpecies = 25
 
-MutateConnectionsChance = 0.25
+MutateConnectionsChance = 0.35
 PerturbChance = 0.90
 CrossoverChance = 0.75
 LinkMutationChance = 2.0
-NodeMutationChance = 0.50
+NodeMutationChance = 0.60
 BiasMutationChance = 0.40
 StepSize = 0.1
 DisableMutationChance = 0.4
@@ -389,26 +390,26 @@ function start_round()
 
 
 	if win_streak % 10 == 0 and win_streak ~= 0 then
-				print("Mixing nets")
-				local species = pool[1].species[pool[1].current_species]
-				local g1 = species.genomes[pool[1].current_genome]
+		print("Mixing nets")
+		local species = pool[1].species[pool[1].current_species]
+		local g1 = species.genomes[pool[1].current_genome]
 
-				local species2 = pool[2].species[pool[2].current_species]
-				local g2 = species2.genomes[pool[2].current_genome]
-				local child = {}
-				if win_streak < 0 then
-					print("Mixing net 2 into 1")
+		local species2 = pool[2].species[pool[2].current_species]
+		local g2 = species2.genomes[pool[2].current_genome]
+		local child = {}
+		if win_streak < 0 then
+			print("Mixing net 2 into 1")
 
-					child = mix_nets(g1, g2, 1)
-					table.insert(child, breed_child(species, 1))
-					add_to_species(child,1)
-				else
-					print("Mixing net 1 into 2 ")
-					child = mix_nets(g1, g2, 2)
-					table.insert(child, breed_child(species2, 2))
-					add_to_species(child,2)
-				end
-				win_streak = 0
+			child = mix_nets(g1, g2, 1)
+			table.insert(child, breed_child(species, 1))
+			add_to_species(child, 1)
+		else
+			print("Mixing net 1 into 2 ")
+			child = mix_nets(g1, g2, 2)
+			table.insert(child, breed_child(species2, 2))
+			add_to_species(child, 2)
+		end
+		win_streak = 0
 	end
 	for i = 1, 2 do
 		next_genome(i)
@@ -541,8 +542,8 @@ function get_inputs(player_num)
 		is_in_hitstun(player_num),
 		is_crouching(player_num),
 		is_invincible(player_num),
-		get_blocking(player_num) ,
-		get_attack_block(player_num) ,
+		get_blocking(player_num),
+		get_attack_block(player_num),
 
 		-- Enemy inputs
 		(get_pos_x(enemy) - 990) / (990 - 420),
@@ -554,11 +555,12 @@ function get_inputs(player_num)
 		is_in_hitstun(enemy),
 		is_crouching(enemy),
 		is_invincible(enemy),
-		get_blocking(enemy) ,
-		get_attack_block(enemy) ,
+		get_blocking(enemy),
+		get_attack_block(enemy),
 	}
 
 	for i = 0, 7, 1 do
+		print("Proj " .. i  .. " x " ..  (projectile_pos_x(i) - 420) / (990 - 420) .. " y " .. (projectile_pos_y(i) - 40) / (120 - 40))
 		table.insert(input_table, (projectile_pos_x(i) - 420) / (990 - 420))
 		table.insert(input_table, (projectile_pos_y(i) - 40) / (120 - 40))
 	end
@@ -984,8 +986,8 @@ function player_fitness(player_num)
 		print("damage made " .. enemy .. " " .. damage_made)
 		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
-	return math.floor((2 * (time_cornered[enemy] / 60) + 10 * damage_made ) - (4 * damage_taken)
-			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made )* multiplier))
+	return math.floor((2 * (time_cornered[enemy] / 60) + 10 * damage_made) - (4 * damage_taken)
+			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier))
 end
 
 
@@ -1281,7 +1283,9 @@ function evaluate_current(player_num)
 	local net_response = evaluate_network(genome.network, inputs, net_num)
 	--draw_genome(genome, player_num)
 	--	print(" ")
-	for button_name, button_value in pairs(net_response) do
+	curr_special_move[key] = 1
+
+--[[	for button_name, button_value in pairs(net_response) do
 		--		print("Is " .. button_name .. " part of " .. key )
 		if string.match(button_name, key) then
 			local bv = num(button_value)
@@ -1298,7 +1302,7 @@ function evaluate_current(player_num)
 			end
 		end
 	end
-	set_input(key)
+	set_input(key)]]
 end
 
 --------------
@@ -1475,6 +1479,95 @@ function main()
 end
 
 
+function draw_hud()
+	local offset = 205
+	for pool_num = 1, 2 do
+		local species = pool[pool_num].species[pool[pool_num].current_species]
+		local genome = species.genomes[pool[pool_num].current_genome]
+		local starting_x = 5 +  (pool_num - 1) * offset
+		local network = genome.network
+		local cells = {}
+		local i = 1
+		local cell = {}
+		for dy=1, Inputs do
+				if i < Inputs then
+					cell = {}
+
+					cell.x = starting_x
+					cell.y = 30+ 2 * dy
+
+					cell.value = network.neurons[i].value
+					cells[i] = cell
+					i = i + 1
+				end
+			end
+
+
+		local biasCell = {}
+		biasCell.x = starting_x + 20
+		biasCell.y = 100
+		biasCell.value = network.neurons[Inputs].value
+		cells[Inputs] = biasCell
+
+		for o = 1, Outputs do
+			cell = {}
+			cell.x = 175 + (pool_num - 1) * offset
+			cell.y = 30 + 4 * o
+			cell.value = network.neurons[MaxNodes + o].value
+			cells[MaxNodes + o] = cell
+
+		end
+
+	local dy = 0
+	for n, neuron in pairs(network.neurons) do
+			cell = {}
+			if n > Inputs and n <= MaxNodes then
+				cell.x = 140 + (pool_num - 1) * offset + 5 * math.floor(dy / 15 )
+				cell.y = 40 + 3 * dy
+				cell.value = neuron.value
+				cells[n] = cell
+				dy = dy + 1
+			end
+		end
+
+	for _, gene in pairs(genome.genes) do
+		if gene.enabled then
+			local c1 = cells[gene.into]
+			local c2 = cells[gene.out]
+			local opacity = 0xA0000000
+			if c1.value == 0 then
+				opacity = 0x20000000
+			end
+
+			local color = 0x80 - math.floor(math.abs(sigmoid(gene.weight)) * 0x80)
+			if gene.weight > 0 then
+				color = opacity + 0x8000 + 0x10000 * color
+			else
+				color = opacity + 0x800000 + 0x100 * color
+			end
+			gui:draw_line(c1.x + 1, c1.y, c2.x - 3, c2.y, color)
+		end
+	end
+		for n, cell in pairs(cells) do
+			if n > Inputs or cell.value ~= 0 then
+				local color = math.floor((cell.value + 1) / 2 * 256)
+				if color > 255 then color = 255 end
+				if color < 0 then color = 0 end
+				local opacity = 0xFF000000
+				if cell.value == 0 then
+					opacity = 0x50000000
+				end
+				color = opacity + color * 0x10000 + color * 0x100 + color
+				gui:draw_box(cell.x - 1, cell.y - 1, cell.x + 1, cell.y + 1, opacity, color)
+			end
+		end
+	end
+end
+
+
+
+
+
 initialize_pool()
 -- Initialize controller
 map_input()
@@ -1483,3 +1576,4 @@ map_input()
 start_round()
 
 emu.register_frame(main)
+emu.register_frame_done(draw_hud, "frame")
