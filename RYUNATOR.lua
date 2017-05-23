@@ -393,7 +393,7 @@ function start_round()
 	time_air[2] = 0
 
 
-	if win_streak % 10 == 0 and win_streak ~= 0 then
+	if win_streak % 50 == 0 and win_streak ~= 0 then
 		print("Mixing nets")
 		local species = pool[1].species[pool[1].current_species]
 		local g1 = species.genomes[pool[1].current_genome]
@@ -1506,14 +1506,13 @@ function draw_hud()
 				cell = {}
 
 				cell.x = starting_x
-				cell.y = 30 + 2 * dy
+				cell.y = 30 + 3 * dy
 
 				cell.value = network.neurons[i].value
 				cells[i] = cell
 				i = i + 1
 			end
 		end
-
 
 		local biasCell = {}
 		biasCell.x = starting_x + 20
@@ -1557,6 +1556,7 @@ function draw_hud()
 					color = opacity + 0x800000 + 0x100 * color
 				end
 				gui:draw_line(c1.x + 1, c1.y, c2.x - 3, c2.y, color)
+
 			end
 		end
 		for n, cell in pairs(cells) do
