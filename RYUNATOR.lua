@@ -11,7 +11,7 @@ local pool
 local controllers
 
 local max_health = {}
-local time_cornered, time_blocking, time_air = {}, {}, {}
+local time_cornered, time_blocking, time_air , time_close = {}, {}, {}, 0
 local win_streak = 0
 local punches = {
 	" Jab Punch",
@@ -391,10 +391,10 @@ function start_round()
 	time_blocking[2] = 0
 	time_air[1] = 0
 	time_air[2] = 0
-
+	time_close = 0
 
 	if win_streak % 50 == 0 and win_streak ~= 0 then
-		print("Mixing nets")
+--[[		print("Mixing nets")
 		local species = pool[1].species[pool[1].current_species]
 		local g1 = species.genomes[pool[1].current_genome]
 
@@ -412,7 +412,7 @@ function start_round()
 			child = mix_nets(g1, g2, 2)
 			table.insert(child, breed_child(species2, 2))
 			add_to_species(child, 2)
-		end
+		end]]
 		win_streak = 0
 	end
 	for i = 1, 2 do
@@ -1002,8 +1002,8 @@ function player_fitness(player_num)
 		print("damage made " .. enemy .. " " .. damage_made)
 		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
 		print("bonus" .. bonus)]]
-	return math.floor((2 * (time_cornered[enemy] / 60) + 10 * damage_made) - (4 * damage_taken)
-			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier))
+	return math.floor((4 * (time_cornered[enemy] / 60) + 10 * damage_made) - (4 * damage_taken)
+			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier) + math.floor(time_close/2))
 end
 
 
@@ -1475,6 +1475,10 @@ function main()
 			if is_cornered(enemy) == 1 then
 				time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
 			end
+
+			if get_x_distance() < 80 then
+				time_close = time_close + 1
+			end
 		else
 			set_input(key)
 			clear_input(i)
@@ -1501,8 +1505,8 @@ function draw_hud()
 		local cells = {}
 		local i = 1
 		local cell = {}
-		for dy = 1, Inputs do
-			if i < Inputs then
+			for dy = 1, Inputs do
+
 				cell = {}
 
 				cell.x = starting_x
@@ -1511,7 +1515,6 @@ function draw_hud()
 				cell.value = network.neurons[i].value
 				cells[i] = cell
 				i = i + 1
-			end
 		end
 
 		local biasCell = {}
@@ -1532,7 +1535,7 @@ function draw_hud()
 		for n, neuron in pairs(network.neurons) do
 			cell = {}
 			if n > Inputs and n <= MaxNodes then
-				cell.x = 140 + (pool_num - 1) * offset + 5 * math.floor(dy / 15)
+				cell.x = 140 + (pool_num - 1) + offset + 5 * math.floor(dy / 15)
 				cell.y = 40 + 3 * dy
 				cell.value = neuron.value
 				cells[n] = cell
@@ -1540,7 +1543,46 @@ function draw_hud()
 			end
 		end
 
+
+		for n=1,4 do
+			for _,gene in pairs(genome.genes) do
+				if gene.enabled then
+					local c1 = cells[gene.into]
+					local c2 = cells[gene.out]
+					if gene.into > Inputs and gene.into <= MaxNodes then
+						c1.x = 0.75*c1.x + 0.25*c2.x
+						if c1.x >= c2.x then
+							c1.x = c1.x - 40
+						end
+						if c1.x < 90 then
+							c1.x = 90
+						end
+
+						if c1.x > 220 then
+							c1.x = 220
+						end
+						c1.y = 0.75*c1.y + 0.25*c2.y
+
+					end
+					if gene.out > Inputs and gene.out <= MaxNodes then
+						c2.x = 0.25*c1.x + 0.75*c2.x
+						if c1.x >= c2.x then
+							c2.x = c2.x + 40
+						end
+						if c2.x < 90 then
+							c2.x = 90
+						end
+						if c2.x > 220 then
+							c2.x = 220
+						end
+						c2.y = 0.25*c1.y + 0.75*c2.y
+					end
+				end
+			end
+		end
+
 		for _, gene in pairs(genome.genes) do
+
 			if gene.enabled then
 				local c1 = cells[gene.into]
 				local c2 = cells[gene.out]
