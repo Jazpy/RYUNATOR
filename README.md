@@ -5,9 +5,9 @@ SFII Neural Network using Neuroevolution
 - Street Fighter II' Turbo (romset sf2hfj)
 # Demo
 ### First Generation 
-![](./demo/giphy.gif)
-### Generation 32
 ![](./demo/giphy2.gif)
+### Generation 32
+![](./demo/giphy.gif)
 ## How To run ? 
 * Clone to MAMEs directory, preferably in a subdictory such as src
 * Run with:
