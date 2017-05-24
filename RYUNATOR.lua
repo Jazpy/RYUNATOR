@@ -992,18 +992,10 @@ function player_fitness(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local health_difference = damage_taken - damage_made
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50 or 0
-	--[[	print(" ")
-		print(key)
-		print("Time midair in seconds " .. time_air[player_num + 1] / 60)
-		print("Blocked for " .. time_blocking[player_num + 1] .. " frames ")
-		print("health for " .. key .. " " .. get_health(player_num))
-		print("multiplier" .. multiplier)
-		print("damage taken " .. player_num + 1 .. " " .. damage_taken)
-		print("damage made " .. enemy .. " " .. damage_made)
-		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
-		print("bonus" .. bonus)]]
-	return math.floor((4 * (time_cornered[enemy] / 60) + 10 * damage_made) - (4 * damage_taken)
-			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier) + math.floor(time_close/2))
+
+	return math.floor((2 * time_cornered[enemy ] + 10 * damage_made) - (4 * damage_taken)
+			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier)
+			+ time_close/10)
 end
 
 
