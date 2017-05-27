@@ -11,7 +11,7 @@ local pool
 local controllers
 
 local max_health = {}
-local time_cornered, time_blocking, time_air , time_close = {}, {}, {}, 0
+local time_cornered, time_blocking, time_air, time_close = {}, {}, {}, 0
 local win_streak = 0
 local punches = {
 	" Jab Punch",
@@ -50,7 +50,7 @@ local output_buttons = {
 
 
 gui_element = 6
-Inputs = 40
+Inputs = 41
 Outputs = #output_buttons
 Population = 150
 DeltaDisjoint = 2.0
@@ -248,6 +248,15 @@ function is_midair(player_num)
 	return num(mem:read_u16(0xFF853F + (player_offset * player_num)) > 0)
 end
 
+function in_hit_distance()
+	local dist = get_x_distance()
+	if dist > 50 then
+		return 0
+	else
+		return (50 - dist) / 50
+	end
+end
+
 function is_thrown(player_num)
 	return num(get_player_state(player_num) == 20)
 end
@@ -394,25 +403,25 @@ function start_round()
 	time_close = 0
 
 	if win_streak % 50 == 0 and win_streak ~= 0 then
---[[		print("Mixing nets")
-		local species = pool[1].species[pool[1].current_species]
-		local g1 = species.genomes[pool[1].current_genome]
+		--[[		print("Mixing nets")
+				local species = pool[1].species[pool[1].current_species]
+				local g1 = species.genomes[pool[1].current_genome]
 
-		local species2 = pool[2].species[pool[2].current_species]
-		local g2 = species2.genomes[pool[2].current_genome]
-		local child = {}
-		if win_streak < 0 then
-			print("Mixing net 2 into 1")
+				local species2 = pool[2].species[pool[2].current_species]
+				local g2 = species2.genomes[pool[2].current_genome]
+				local child = {}
+				if win_streak < 0 then
+					print("Mixing net 2 into 1")
 
-			child = mix_nets(g1, g2, 1)
-			table.insert(child, breed_child(species, 1))
-			add_to_species(child, 1)
-		else
-			print("Mixing net 1 into 2 ")
-			child = mix_nets(g1, g2, 2)
-			table.insert(child, breed_child(species2, 2))
-			add_to_species(child, 2)
-		end]]
+					child = mix_nets(g1, g2, 1)
+					table.insert(child, breed_child(species, 1))
+					add_to_species(child, 1)
+				else
+					print("Mixing net 1 into 2 ")
+					child = mix_nets(g1, g2, 2)
+					table.insert(child, breed_child(species2, 2))
+					add_to_species(child, 2)
+				end]]
 		win_streak = 0
 	end
 	for i = 1, 2 do
@@ -535,7 +544,7 @@ function get_inputs(player_num)
 	local input_table = {
 		-- shared inputs
 		(get_x_distance()) / (264),
-
+		in_hit_distance(),
 		-- Own inputs
 		(get_pos_x(player_num) - 990) / (990 - 420),
 		(get_pos_y(player_num) - 40) / (120 - 40),
@@ -993,9 +1002,9 @@ function player_fitness(player_num)
 	local health_difference = damage_taken - damage_made
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50 or 0
 
-	return math.floor((2 * time_cornered[enemy ] + 10 * damage_made) - (4 * damage_taken)
+	return math.floor((2 * time_cornered[enemy] + 10 * damage_made) - (4 * damage_taken)
 			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier)
-			+ time_close/10)
+			+ (time_close / (time_cornered[player_num + 1 ] + 1)))
 end
 
 
@@ -1444,19 +1453,19 @@ function advance_neural_net(player_num)
 end
 
 function main()
-	for i = 0, 1 do
+		for i = 0, 1 do
 		local pool_num = i + 1
 		pool[pool_num].current_frame = pool[pool_num].current_frame + 1
 
 		local key = i == 0 and "P1" or "P2"
-		local enemy = player_num == 0 and 1 or 0
+		local enemy = pool_num  == 1 and 2 or 1
 		if pool[pool_num].current_frame % 5 == 0 then
 			--			controllers[key][key .. " Fierce Punch"].state = 1
 			set_input(key)
 			if curr_special_move[key] ~= 0 then
 				player_frame(i)
 			else
-				evaluate_current(i)
+--				evaluate_current(i)
 			end
 			if is_midair(i) == 1 then
 				time_air[i + 1] = time_air[i + 1] + 1
@@ -1464,8 +1473,8 @@ function main()
 			if get_blocking(i) ~= 0 then
 				time_blocking[i + 1] = time_blocking[i + 1] + 1
 			end
-			if is_cornered(enemy) == 1 then
-				time_cornered[enemy + 1] = time_cornered[enemy + 1] + 1
+			if is_cornered(enemy - 1) == 1 then
+				time_cornered[enemy] = time_cornered[enemy] + 1
 			end
 
 			if get_x_distance() < 80 then
@@ -1497,16 +1506,16 @@ function draw_hud()
 		local cells = {}
 		local i = 1
 		local cell = {}
-			for dy = 1, Inputs do
+		for dy = 1, Inputs do
 
-				cell = {}
+			cell = {}
 
-				cell.x = starting_x
-				cell.y = 30 + 3 * dy
+			cell.x = starting_x
+			cell.y = 30 + 3 * dy
 
-				cell.value = network.neurons[i].value
-				cells[i] = cell
-				i = i + 1
+			cell.value = network.neurons[i].value
+			cells[i] = cell
+			i = i + 1
 		end
 
 		local biasCell = {}
@@ -1536,13 +1545,13 @@ function draw_hud()
 		end
 
 
-		for n=1,4 do
-			for _,gene in pairs(genome.genes) do
+		for n = 1, 4 do
+			for _, gene in pairs(genome.genes) do
 				if gene.enabled then
 					local c1 = cells[gene.into]
 					local c2 = cells[gene.out]
 					if gene.into > Inputs and gene.into <= MaxNodes then
-						c1.x = 0.75*c1.x + 0.25*c2.x
+						c1.x = 0.75 * c1.x + 0.25 * c2.x
 						if c1.x >= c2.x then
 							c1.x = c1.x - 40
 						end
@@ -1553,11 +1562,10 @@ function draw_hud()
 						if c1.x > 220 then
 							c1.x = 220
 						end
-						c1.y = 0.75*c1.y + 0.25*c2.y
-
+						c1.y = 0.75 * c1.y + 0.25 * c2.y
 					end
 					if gene.out > Inputs and gene.out <= MaxNodes then
-						c2.x = 0.25*c1.x + 0.75*c2.x
+						c2.x = 0.25 * c1.x + 0.75 * c2.x
 						if c1.x >= c2.x then
 							c2.x = c2.x + 40
 						end
@@ -1567,7 +1575,7 @@ function draw_hud()
 						if c2.x > 220 then
 							c2.x = 220
 						end
-						c2.y = 0.25*c1.y + 0.75*c2.y
+						c2.y = 0.25 * c1.y + 0.75 * c2.y
 					end
 				end
 			end
@@ -1590,7 +1598,6 @@ function draw_hud()
 					color = opacity + 0x800000 + 0x100 * color
 				end
 				gui:draw_line(c1.x + 1, c1.y, c2.x - 3, c2.y, color)
-
 			end
 		end
 		for n, cell in pairs(cells) do
