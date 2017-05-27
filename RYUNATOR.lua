@@ -1460,12 +1460,11 @@ function main()
 		local key = i == 0 and "P1" or "P2"
 		local enemy = pool_num  == 1 and 2 or 1
 		if pool[pool_num].current_frame % 5 == 0 then
-			--			controllers[key][key .. " Fierce Punch"].state = 1
 			set_input(key)
 			if curr_special_move[key] ~= 0 then
 				player_frame(i)
 			else
---				evaluate_current(i)
+				evaluate_current(i)
 			end
 			if is_midair(i) == 1 then
 				time_air[i + 1] = time_air[i + 1] + 1
