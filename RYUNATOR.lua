@@ -1,6 +1,8 @@
 local mem = manager:machine().devices[":maincpu"].spaces["program"]
 local gui = manager:machine().screens[":screen"]
 
+local Json = require("json")
+local path = "src/RYUNATOR/pools/player_"
 
 -- Memory address offset to differentiate p1 and p2
 local player_offset = 0x0300
@@ -52,7 +54,7 @@ local output_buttons = {
 gui_element = 6
 Inputs = 41
 Outputs = #output_buttons
-Population = 150
+Population = 300
 DeltaDisjoint = 2.0
 DeltaWeights = 0.4
 DeltaThreshold = 1.0
@@ -389,6 +391,7 @@ function get_backward(player)
 	end
 end
 
+
 function start_round()
 
 	manager:machine():load("1");
@@ -540,11 +543,11 @@ function get_inputs(player_num)
 	-- Without keys to ensure their order is always maintained
 	local enemy = player_num == 0 and 1 or 0
 
-
+	local forward = get_forward(player_num) == " Right" and 1 or -1
 	local input_table = {
 		-- shared inputs
-		(get_x_distance()) / (264),
-		in_hit_distance(),
+		(get_x_distance()) / (264) * forward,
+		in_hit_distance() * forward,
 		-- Own inputs
 		(get_pos_x(player_num) - 990) / (990 - 420),
 		(get_pos_y(player_num) - 40) / (120 - 40),
@@ -1004,7 +1007,7 @@ function player_fitness(player_num)
 
 	return math.floor((2 * time_cornered[enemy] + 10 * damage_made) - (4 * damage_taken)
 			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier)
-			+ (time_close / (time_cornered[player_num + 1 ] + 1)))
+			+ (time_close / (time_cornered[player_num + 1] + 1)))
 end
 
 
@@ -1322,91 +1325,47 @@ end
 --------------
 --- FILES------
 --------------
-function load_file(pool_num)
-	local filename = "player_" .. pool_num .. ".pool"
+function save_json(pool_num)
+	local species = pool[pool_num]
+	local filename = path .. pool_num .. ".json"
+
+	local file = io.open(filename, "w")
+
+	if file then
+		local contents = Json.encode(species)
+		file:write(contents)
+		io.close(file)
+		print("Saved json at " .. filename)
+		return true
+	else
+		print("Error: could not save ".. filename)
+		return false
+	end
+end
+
+function load_json(pool_num)
+	local filename = path .. pool_num .. ".json"
+	print("Loading " .. filename)
+	local contents = ""
 	local file = io.open(filename, "r")
-	if file ~= nil then
-		print("Successfully loaded " .. filename)
-		pool[pool_num] = new_pool()
-		pool[pool_num].generation = file:read("*number")
-		pool[pool_num].max_fitness = file:read("*number")
-		local num_species = file:read("*number")
-		for s = 1, num_species do
-			local species = new_species()
-			table.insert(pool[pool_num].species, species)
-			species.top_fitness = file:read("*number")
-			species.staleness = file:read("*number")
-			local num_genomes = file:read("*number")
-			for g = 1, num_genomes do
-				local genome = new_genome()
-				table.insert(species.genomes, genome)
-				genome.fitness = file:read("*number")
-				genome.max_neuron = file:read("*number")
-				local line = file:read("*line")
-				while line ~= "done" do
-					genome.mutation_rates[line] = file:read("*number")
-					line = file:read("*line")
-				end
-				local num_genes = file:read("*number")
-				for n = 1, num_genes do
-					local gene = new_gene()
-					table.insert(genome.genes, gene)
-					local enabled
-					gene.into, gene.out, gene.weight, gene.innovation, enabled = file:read("*number", "*number", "*number", "*number", "*number")
-					if enabled == 0 then
-						gene.enabled = false
-					else
-						gene.enabled = true
-					end
-				end
-			end
-		end
-		file:close()
+	local myTable = {}
+	if file then
+		-- read all contents of file into a string
+		local contents = file:read("*a")
+		myTable = Json.decode(contents);
+		io.close(file)
+		pool[pool_num] = myTable
 	end
 end
 
-function write_file(pool_num)
-	print("Writing file " .. "player_" .. pool_num .. ".pool")
-	local file = io.open("player_" .. pool_num .. ".pool", "w")
-	file:write(pool[pool_num].generation .. "\n")
-	file:write(pool[pool_num].max_fitness .. "\n")
-	file:write(#pool[pool_num].species .. "\n")
-	for n, species in pairs(pool[pool_num].species) do
-		file:write(species.top_fitness .. "\n")
-		file:write(species.staleness .. "\n")
-		file:write(#species.genomes .. "\n")
-		for m, genome in pairs(species.genomes) do
-			file:write(genome.fitness .. "\n")
-			file:write(genome.max_neuron .. "\n")
-			for mutation, rate in pairs(genome.mutation_rates) do
-				file:write(mutation .. "\n")
-				file:write(rate .. "\n")
-			end
-			file:write("done\n")
 
-			file:write(#genome.genes .. "\n")
-			for l, gene in pairs(genome.genes) do
-				file:write(gene.into .. " ")
-				file:write(gene.out .. " ")
-				file:write(gene.weight .. " ")
-				file:write(gene.innovation .. " ")
-				if (gene.enabled) then
-					file:write("1\n")
-				else
-					file:write("0\n")
-				end
-			end
-		end
-	end
-	file:close()
-end
 
 function load_pool(pool_num)
-	load_file(pool_num)
+	load_json(pool_num)
 end
 
 function save_file(pool_num)
-	write_file(pool_num)
+	save_json(pool_num)
 end
 
 ---------------
@@ -1453,12 +1412,12 @@ function advance_neural_net(player_num)
 end
 
 function main()
-		for i = 0, 1 do
+	for i = 0, 1 do
 		local pool_num = i + 1
 		pool[pool_num].current_frame = pool[pool_num].current_frame + 1
 
 		local key = i == 0 and "P1" or "P2"
-		local enemy = pool_num  == 1 and 2 or 1
+		local enemy = pool_num == 1 and 2 or 1
 		if pool[pool_num].current_frame % 5 == 0 then
 			set_input(key)
 			if curr_special_move[key] ~= 0 then
