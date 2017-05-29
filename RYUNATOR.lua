@@ -45,9 +45,9 @@ local output_buttons = {
 	" Short Kick",
 	" Forward Kick",
 	" Roundhouse Kick",
-	" special 1",
+--[[	" special 1",
 	" special 2",
-	" special 3",
+	" special 3",]]
 }
 
 
@@ -1405,7 +1405,7 @@ end
 function write_file(pool_num)
 	local filename = path .. "current/player_" .. pool_num .. ".pool"
 	print("Writing file " .. filename)
-	local file = io.open("player_" .. pool_num .. ".pool", "w")
+	local file = io.open(filename, "w")
 	file:write(pool[pool_num].generation .. "\n")
 	file:write(pool[pool_num].max_fitness .. "\n")
 	file:write(#pool[pool_num].species .. "\n")
