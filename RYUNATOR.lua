@@ -2,7 +2,7 @@ local mem = manager:machine().devices[":maincpu"].spaces["program"]
 local gui = manager:machine().screens[":screen"]
 
 local Json = require("json")
-local path = "src/RYUNATOR/pools/player_"
+local path = "src/RYUNATOR/pools/"
 
 -- Memory address offset to differentiate p1 and p2
 local player_offset = 0x0300
@@ -1327,7 +1327,7 @@ end
 --------------
 function save_json(pool_num)
 	local species = pool[pool_num]
-	local filename = path .. pool_num .. ".json"
+	local filename = path .."history/player_".. pool_num .."_gen_" .. species.generation .. ".json"
 
 	local file = io.open(filename, "w")
 
@@ -1344,7 +1344,8 @@ function save_json(pool_num)
 end
 
 function load_json(pool_num)
-	local filename = path .. pool_num .. ".json"
+	local filename = path .."player_".. pool_num .. ".json"
+
 	print("Loading " .. filename)
 	local contents = ""
 	local file = io.open(filename, "r")
@@ -1357,14 +1358,93 @@ function load_json(pool_num)
 		pool[pool_num] = myTable
 	end
 end
+function load_file(pool_num)
+	local filename = path .. "current/player_" .. pool_num .. ".pool"
+	print("Loading " .. filename)
+	local file = io.open(filename, "r")
+	if file ~= nil then
+		print("Successfully loaded " .. filename)
+		pool[pool_num] = new_pool()
+		pool[pool_num].generation = file:read("*number")
+		pool[pool_num].max_fitness = file:read("*number")
+		local num_species = file:read("*number")
+		for s = 1, num_species do
+			local species = new_species()
+			table.insert(pool[pool_num].species, species)
+			species.top_fitness = file:read("*number")
+			species.staleness = file:read("*number")
+			local num_genomes = file:read("*number")
+			for g = 1, num_genomes do
+				local genome = new_genome()
+				table.insert(species.genomes, genome)
+				genome.fitness = file:read("*number")
+				genome.max_neuron = file:read("*number")
+				local line = file:read("*line")
+				while line ~= "done" do
+					genome.mutation_rates[line] = file:read("*number")
+					line = file:read("*line")
+				end
+				local num_genes = file:read("*number")
+				for n = 1, num_genes do
+					local gene = new_gene()
+					table.insert(genome.genes, gene)
+					local enabled
+					gene.into, gene.out, gene.weight, gene.innovation, enabled = file:read("*number", "*number", "*number", "*number", "*number")
+					if enabled == 0 then
+						gene.enabled = false
+					else
+						gene.enabled = true
+					end
+				end
+			end
+		end
+		file:close()
+	end
+end
 
+function write_file(pool_num)
+	local filename = path .. "current/player_" .. pool_num .. ".pool"
+	print("Writing file " .. filename)
+	local file = io.open("player_" .. pool_num .. ".pool", "w")
+	file:write(pool[pool_num].generation .. "\n")
+	file:write(pool[pool_num].max_fitness .. "\n")
+	file:write(#pool[pool_num].species .. "\n")
+	for n, species in pairs(pool[pool_num].species) do
+		file:write(species.top_fitness .. "\n")
+		file:write(species.staleness .. "\n")
+		file:write(#species.genomes .. "\n")
+		for m, genome in pairs(species.genomes) do
+			file:write(genome.fitness .. "\n")
+			file:write(genome.max_neuron .. "\n")
+			for mutation, rate in pairs(genome.mutation_rates) do
+				file:write(mutation .. "\n")
+				file:write(rate .. "\n")
+			end
+			file:write("done\n")
 
+			file:write(#genome.genes .. "\n")
+			for l, gene in pairs(genome.genes) do
+				file:write(gene.into .. " ")
+				file:write(gene.out .. " ")
+				file:write(gene.weight .. " ")
+				file:write(gene.innovation .. " ")
+				if (gene.enabled) then
+					file:write("1\n")
+				else
+					file:write("0\n")
+				end
+			end
+		end
+	end
+	file:close()
+end
 
 function load_pool(pool_num)
-	load_json(pool_num)
+	load_file(pool_num)
 end
 
 function save_file(pool_num)
+	write_file(pool_num)
 	save_json(pool_num)
 end
 
@@ -1412,7 +1492,7 @@ function advance_neural_net(player_num)
 end
 
 function main()
-	for i = 0, 1 do
+		for i = 0, 1 do
 		local pool_num = i + 1
 		pool[pool_num].current_frame = pool[pool_num].current_frame + 1
 
