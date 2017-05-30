@@ -3,7 +3,7 @@ local gui = manager:machine().screens[":screen"]
 
 local Json = require("json")
 local path = "src/RYUNATOR/pools/"
-
+local players_amount = 2
 -- Memory address offset to differentiate p1 and p2
 local player_offset = 0x0300
 -- Memory address offset for projectile slots
@@ -45,9 +45,9 @@ local output_buttons = {
 	" Short Kick",
 	" Forward Kick",
 	" Roundhouse Kick",
---[[	" special 1",
+	" special 1",
 	" special 2",
-	" special 3",]]
+	" special 3",
 }
 
 
@@ -191,7 +191,9 @@ function get_hitbox_info(player_num)
 end
 
 function get_health(player_num)
-	return mem:read_u16(0xFF83EA + (player_offset * player_num))
+	local health =  mem:read_u16(0xFF83EA + (player_offset * player_num)) > 1000 and 144 or  mem:read_u16(0xFF83EA + (player_offset * player_num))
+
+	return health
 end
 
 function has_control(player_num)
@@ -427,7 +429,7 @@ function start_round()
 				end]]
 		win_streak = 0
 	end
-	for i = 1, 2 do
+	for i = 1, players_amount do
 		next_genome(i)
 		local species = pool[i].species[pool[i].current_species]
 		local genome = species.genomes[pool[i].current_genome]
@@ -1004,7 +1006,16 @@ function player_fitness(player_num)
 	local damage_made = max_health[enemy] - get_health(enemy - 1)
 	local health_difference = damage_taken - damage_made
 	local bonus = get_round_winner() == player_num + 1 and get_timer() * 50 or 0
-
+		print(" ")
+		print(key)
+		print("Time midair in seconds " .. time_air[player_num + 1] / 60)
+		print("Blocked for " .. time_blocking[player_num + 1] .. " frames ")
+		print("health for " .. key .. " " .. get_health(player_num))
+		print("multiplier " .. multiplier)
+		print("damage taken " .. player_num + 1 .. " " .. damage_taken)
+		print("damage made " .. enemy .. " " .. damage_made)
+		print("Time cornered " .. enemy .. " " .. time_cornered[enemy] / 60)
+		print("bonus " .. bonus)
 	return math.floor((2 * time_cornered[enemy] + 10 * damage_made) - (4 * damage_taken)
 			+ time_blocking[player_num + 1] / 4 + 5 * time_air[player_num + 1] / 60 + ((bonus + damage_made) * multiplier)
 			+ (time_close / (time_cornered[player_num + 1] + 1)))
@@ -1492,7 +1503,7 @@ function advance_neural_net(player_num)
 end
 
 function main()
-		for i = 0, 1 do
+		for i = 0, players_amount-1 do
 		local pool_num = i + 1
 		pool[pool_num].current_frame = pool[pool_num].current_frame + 1
 
@@ -1526,7 +1537,7 @@ function main()
 
 	if is_round_finished() then
 		print(" ")
-		for i = 0, 1 do
+		for i = 0, players_amount -1 do
 			advance_neural_net(i)
 		end
 		start_round()
@@ -1536,7 +1547,7 @@ end
 
 function draw_hud()
 	local offset = 205
-	for pool_num = 1, 2 do
+	for pool_num = 1, players_amount  do
 		local species = pool[pool_num].species[pool[pool_num].current_species]
 		local genome = species.genomes[pool[pool_num].current_genome]
 		local starting_x = 5 + (pool_num - 1) * offset
