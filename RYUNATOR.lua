@@ -52,7 +52,7 @@ local output_buttons = {
 
 
 gui_element = 6
-Inputs = 43
+Inputs = 45
 Outputs = #output_buttons
 Population = 300
 DeltaDisjoint = 2.0
@@ -281,18 +281,12 @@ end
 
 -- player_num = player attacking
 -- 0 = no attack, 1 = should block high, -1 = should block low
-function get_attack_block(player_num)
-	if get_animation_byte(player_num, 0x0C, 1) == 0 then
-		return 0
-	end
-
+-- returns one hot encoded array with values {no attack, should block high, and should block low}
+function get_attack_block(player_num)	
 	local attack_ex = get_hitbox_attack_byte(player_num, 0x7)
 
-	if attack_ex == 0 or attack_ex == 1 or attack_ex == 3 then
-		return -1
-	elseif attack_ex == 2 then
-		return 1
-	end
+	return  one_hot_encode_features(1,-1, attack_ex)
+	
 end
 
 function is_in_hitstun(player_num)
