@@ -52,7 +52,7 @@ local output_buttons = {
 
 
 gui_element = 6
-Inputs = 41
+Inputs = 45
 Outputs = #output_buttons
 Population = 300
 DeltaDisjoint = 2.0
@@ -270,31 +270,27 @@ function is_crouching(player_num)
 end
 
 -- player_num = player blocking
--- 0 = no block, 1 = standing block, -1 = crouching block
+-- animation byte returns 0 = no block, 1 = standing block, -1 = crouching block
+-- returns One Hot encoded array with values {no blocking, standing block, crouching block}
 function get_blocking(player_num)
 	local blocking = get_animation_byte(player_num, 0x11, 1)
 
-	return blocking == 2 and -1 or blocking
+	features = one_hot_encode_features(1,-1,blocking)
+	return features
 end
 
 -- player_num = player attacking
 -- 0 = no attack, 1 = should block high, -1 = should block low
-function get_attack_block(player_num)
-	if get_animation_byte(player_num, 0x0C, 1) == 0 then
-		return 0
-	end
-
+-- returns one hot encoded array with values {no attack, should block high, and should block low}
+function get_attack_block(player_num)	
 	local attack_ex = get_hitbox_attack_byte(player_num, 0x7)
 
-	if attack_ex == 0 or attack_ex == 1 or attack_ex == 3 then
-		return -1
-	elseif attack_ex == 2 then
-		return 1
-	end
+	return  one_hot_encode_features(1,-1, attack_ex)
+	
 end
 
 function is_in_hitstun(player_num)
-	return num(get_player_state(player_num) == 14 and get_blocking(player_num) == 0)
+	return num(get_player_state(player_num) == 14 and get_blocking(player_num)[1] == 1)
 end
 
 -- Special move with invincibility OR waking up
@@ -341,6 +337,29 @@ end
 ----------------------
 -- HELPER FUNCTIONS --
 ----------------------
+function dump(o)
+	if type(o) == 'table' then
+	   local s = '{ '
+	   for k,v in pairs(o) do
+		  if type(k) ~= 'number' then k = '"'..k..'"' end
+		  s = s .. '['..k..'] = ' .. dump(v) .. ','
+	   end
+	   return s .. '} '
+	else
+	   return tostring(o)
+	end
+ end
+
+function flatten(list)
+	if type(list) ~= "table" then return {list} end
+	local flat_list = {}
+	for _, elem in ipairs(list) do
+	  for _, val in ipairs(flatten(elem)) do
+		flat_list[#flat_list + 1] = val
+	  end
+	end
+	return flat_list
+  end
 local function array_has_value(tab, val)
 	for index, value in ipairs(tab) do
 		if value == val then
@@ -393,6 +412,13 @@ function get_backward(player)
 	end
 end
 
+function one_hot_encode_features(max, min, active_feature)
+	features = {}
+	for i = 1, max-min do
+		table.insert(features, (i == feature) and 1 or 0) 
+	end
+	return features
+end 
 
 function start_round()
 
@@ -445,6 +471,8 @@ end
 --------------------
 -- PLAYER ACTIONS --
 --------------------
+
+
 function quarter_circle_forward(controller_to_update, punch_type)
 	local key = controller_to_update == 0 and "P1" or "P2"
 	local forward = get_forward(controller_to_update)
@@ -594,7 +622,8 @@ function get_inputs(player_num)
 		table.insert(input_table, (distance_x / 264))
 		table.insert(input_table, (distance_y / 264))
 	end
-	return input_table
+--	print(dump(flatten(input_table)))
+	return flatten(input_table)
 end
 
 function sigmoid(x)
@@ -727,7 +756,8 @@ function evaluate_network(network, inputs, player_num)
 	local key = player_num == 1 and "P1" or "P2"
 	table.insert(inputs, 1)
 	if #inputs ~= Inputs then
-		print("Incorrect number of neural network inputs.")
+		print("Incorrect number of neural network inputs")
+		print(#inputs)
 		return {}
 	end
 
@@ -1519,7 +1549,7 @@ function main()
 			if is_midair(i) == 1 then
 				time_air[i + 1] = time_air[i + 1] + 1
 			end
-			if get_blocking(i) ~= 0 then
+		if get_blocking(i)[0] == 1 then
 				time_blocking[i + 1] = time_blocking[i + 1] + 1
 			end
 			if is_cornered(enemy - 1) == 1 then
