@@ -270,11 +270,14 @@ function is_crouching(player_num)
 end
 
 -- player_num = player blocking
--- 0 = no block, 1 = standing block, -1 = crouching block
+-- animation byte returns 0 = no block, 1 = standing block, -1 = crouching block
+-- returns One Hot encoded array with values {no blocking, standing block, crouching block}
 function get_blocking(player_num)
 	local blocking = get_animation_byte(player_num, 0x11, 1)
 
-	return blocking == 2 and -1 or blocking
+	features = one_hot_encode_features(-1,1,blocking)
+	print(features)
+	return features
 end
 
 -- player_num = player attacking
@@ -294,7 +297,7 @@ function get_attack_block(player_num)
 end
 
 function is_in_hitstun(player_num)
-	return num(get_player_state(player_num) == 14 and get_blocking(player_num) == 0)
+	return num(get_player_state(player_num) == 14 and get_blocking(player_num)[1] == 1)
 end
 
 -- Special move with invincibility OR waking up
@@ -341,6 +344,16 @@ end
 ----------------------
 -- HELPER FUNCTIONS --
 ----------------------
+function flatten(list)
+	if type(list) ~= "table" then return {list} end
+	local flat_list = {}
+	for _, elem in ipairs(list) do
+	  for _, val in ipairs(flatten(elem)) do
+		flat_list[#flat_list + 1] = val
+	  end
+	end
+	return flat_list
+  end
 local function array_has_value(tab, val)
 	for index, value in ipairs(tab) do
 		if value == val then
@@ -393,6 +406,14 @@ function get_backward(player)
 	end
 end
 
+function one_hot_encode_features(max, min, active_feature)
+	features = {}
+	for i, max-min, do
+		features[i] = (i == feature) and 1 or 0 
+	end
+
+	return features
+end 
 
 function start_round()
 
@@ -445,6 +466,8 @@ end
 --------------------
 -- PLAYER ACTIONS --
 --------------------
+
+
 function quarter_circle_forward(controller_to_update, punch_type)
 	local key = controller_to_update == 0 and "P1" or "P2"
 	local forward = get_forward(controller_to_update)
@@ -545,7 +568,7 @@ function get_inputs(player_num)
 	-- Without keys to ensure their order is always maintained
 	local enemy = player_num == 0 and 1 or 0
 
-	local forward = get_forward(player_num) == " Right" and 1 or -1
+	local forward = get_forward(player_num) == " Right" and {0,1} or {1,0}
 	local input_table = {
 		-- shared inputs
 		(get_x_distance()) / (264) * forward,
@@ -560,7 +583,7 @@ function get_inputs(player_num)
 		is_in_hitstun(player_num),
 		is_crouching(player_num),
 		is_invincible(player_num),
-		get_blocking(player_num),
+		--get_blocking(player_num),
 		get_attack_block(player_num),
 
 		-- Enemy inputs
@@ -573,7 +596,7 @@ function get_inputs(player_num)
 		is_in_hitstun(enemy),
 		is_crouching(enemy),
 		is_invincible(enemy),
-		get_blocking(enemy),
+		--getget_blocking(enemy),
 		get_attack_block(enemy),
 	}
 
@@ -1519,9 +1542,9 @@ function main()
 			if is_midair(i) == 1 then
 				time_air[i + 1] = time_air[i + 1] + 1
 			end
-			if get_blocking(i) ~= 0 then
-				time_blocking[i + 1] = time_blocking[i + 1] + 1
-			end
+--			if get_blocking(i)[0] == 1 then
+--				time_blocking[i + 1] = time_blocking[i + 1] + 1
+--			end
 			if is_cornered(enemy - 1) == 1 then
 				time_cornered[enemy] = time_cornered[enemy] + 1
 			end
