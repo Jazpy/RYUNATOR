@@ -3,6 +3,7 @@ SFII Neural Network using Neuroevolution
 
 - MAME version: MAME 0.185 64-bit Windows
 - Street Fighter II' Turbo (romset sf2hfj)
+- A save state in a match
 # Demo
 ### First Generation 
 ![](./demo/giphy2.gif)
