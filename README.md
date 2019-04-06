@@ -10,6 +10,6 @@ SFII Neural Network using Neuroevolution
 ### Generation 32
 ![](./demo/giphy.gif)
 ## How To run ? 
-* Clone to MAMEs directory, preferably in a subdictory such as src
+* Clone to MAME's directory, preferably in a subdirectory such as src
 * Run with:
     - *.\mame64.exe -autoboot_script src/RYUNATOR/RYUNATOR.lua sf2hfj -w*
